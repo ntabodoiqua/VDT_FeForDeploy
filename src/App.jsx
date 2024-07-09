@@ -13,7 +13,7 @@ function App() {
     const fetchAccount = async () => {
       setAppLoading(true);
       const res = await axios.get(`/v1/api/account`);
-      if (res) {
+      if (res && !res.message) {
         setAuth({
           isAuthenticated: true,
           user: {
