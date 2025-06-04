@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker } from 'antd';
 import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import axiosInstance from '../../util/axios.customize';
+import { debounce } from 'lodash';
 
 const { Option } = Select;
 
@@ -16,27 +17,79 @@ const UserManagement = () => {
         pageSizeOptions: ['5', '10', '15', '20'],
         showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} bản ghi`
     });
-    const [searchText, setSearchText] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all');
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [filterUsername, setFilterUsername] = useState('');
+    const [filterFirstName, setFilterFirstName] = useState('');
+    const [filterLastName, setFilterLastName] = useState('');
+    const [filterEnabled, setFilterEnabled] = useState(null);
+    const [filterGender, setFilterGender] = useState(null);
+    const [filterCreatedFrom, setFilterCreatedFrom] = useState(null);
+    const [filterCreatedTo, setFilterCreatedTo] = useState(null);
+    const [filterRoles, setFilterRoles] = useState(null);
+    const [currentSorter, setCurrentSorter] = useState({ field: 'username', order: 'ascend' });
 
-    const fetchUsers = async (page = 1, pageSize = 10) => {
+    const handleFilterChange = (value, setter) => {
+        setter(value);
+    };
+
+    const handleResetFilters = () => {
+        setFilterUsername('');
+        setFilterFirstName('');
+        setFilterLastName('');
+        setFilterEnabled(null);
+        setFilterGender(null);
+        setFilterCreatedFrom(null);
+        setFilterCreatedTo(null);
+        setFilterRoles(null);
+        setPagination(prev => ({ ...prev, current: 1 }));
+        setCurrentSorter({ field: 'username', order: 'ascend' });
+    };
+
+    const fetchData = useCallback(async () => {
+        const params = {
+            page: pagination.current - 1,
+            size: pagination.pageSize
+        };
+
+        if (filterUsername && filterUsername.trim() !== '') params.username = filterUsername.trim();
+        if (filterFirstName && filterFirstName.trim() !== '') params.firstName = filterFirstName.trim();
+        if (filterLastName && filterLastName.trim() !== '') params.lastName = filterLastName.trim();
+        if (typeof filterEnabled === 'boolean') params.enabled = filterEnabled;
+        if (filterGender) params.gender = filterGender;
+        if (filterCreatedFrom) {
+            const fromDate = new Date(filterCreatedFrom.format('YYYY-MM-DD'));
+            fromDate.setHours(0, 0, 0, 0);
+            params.createdFrom = fromDate.toISOString();
+        }
+        if (filterCreatedTo) {
+            const toDate = new Date(filterCreatedTo.format('YYYY-MM-DD'));
+            toDate.setHours(23, 59, 59, 999);
+            params.createdTo = toDate.toISOString();
+        }
+        if (filterRoles) params.roles = filterRoles;
+
+        if (currentSorter && currentSorter.field && currentSorter.order) {
+            params.sort = `${currentSorter.field},${currentSorter.order === 'ascend' ? 'asc' : 'desc'}`;
+        } else {
+            params.sort = 'username,asc';
+        }
+
+        const queryParams = new URLSearchParams(params);
+        const url = `/lms/admin/manage-users?${queryParams.toString()}`;
+        console.log('Request URL:', url);
+
         try {
             setLoading(true);
-            const url = `/lms/admin/manage-users?page=${page - 1}&size=${pageSize}`;
-            console.log('Request URL:', url);
-
             const response = await axiosInstance.get(url);
             console.log('API Response:', response);
 
             if (response.code === 1000) {
-                const { content, totalElements, totalPages, number } = response.result;
+                const { content, totalElements, number } = response.result;
                 setUsers(content);
                 setPagination(prev => ({
                     ...prev,
                     current: number + 1,
-                    pageSize: pageSize,
                     total: totalElements
                 }));
             } else {
@@ -54,33 +107,35 @@ const UserManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [
+        pagination.current, pagination.pageSize, currentSorter,
+        filterUsername, filterFirstName, filterLastName, filterEnabled,
+        filterGender, filterCreatedFrom, filterCreatedTo, filterRoles
+    ]);
 
     useEffect(() => {
-        fetchUsers(pagination.current, pagination.pageSize);
-    }, []);
+        fetchData();
+    }, [fetchData]);
 
     const handleTableChange = (newPagination, filters, sorter) => {
-        console.log('Pagination changed:', newPagination);
-        fetchUsers(newPagination.current, newPagination.pageSize);
-    };
-
-    const handleSearch = (value) => {
-        setSearchText(value);
-        // Implement search logic here
-    };
-
-    const handleRoleFilter = (value) => {
-        setRoleFilter(value);
-        // Implement role filter logic here
+        console.log('Table change:', newPagination, filters, sorter);
+        setPagination(prev => ({
+            ...prev,
+            current: newPagination.current,
+            pageSize: newPagination.pageSize,
+        }));
+        if (sorter && sorter.field && sorter.order) {
+            setCurrentSorter({ field: sorter.field, order: sorter.order });
+        } else {
+            setCurrentSorter({ field: 'username', order: 'ascend' });
+        }
     };
 
     const handleStatusChange = async (userId, enabled) => {
         try {
-            // Implement API call to update user status
-            // await axiosInstance.put(`/lms/admin/users/${userId}/status`, { enabled });
+            await axiosInstance.put(`/api/users/${userId}/status`, { enabled });
             message.success(`User ${enabled ? 'enabled' : 'disabled'} successfully`);
-            fetchUsers(pagination.current, pagination.pageSize);
+            fetchData();
         } catch (error) {
             console.error('Error updating user status:', error);
             message.error('Failed to update user status');
@@ -97,7 +152,8 @@ const UserManagement = () => {
             title: 'Username',
             dataIndex: 'username',
             key: 'username',
-            render: (text) => text || 'N/A'
+            render: (text) => text || 'N/A',
+            sorter: true,
         },
         {
             title: 'Full Name',
@@ -179,22 +235,77 @@ const UserManagement = () => {
     return (
         <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
+            </div>
+
+            <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
                 <Input
-                    placeholder="Search users..."
-                    prefix={<SearchOutlined />}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    style={{ width: '300px' }}
+                    placeholder="Filter by Username (Press Enter)"
+                    value={filterUsername}
+                    onChange={(e) => setFilterUsername(e.target.value)}
+                    style={{ width: '200px' }}
+                />
+                <Input
+                    placeholder="Filter by First Name (Press Enter)"
+                    value={filterFirstName}
+                    onChange={(e) => setFilterFirstName(e.target.value)}
+                    style={{ width: '200px' }}
+                />
+                <Input
+                    placeholder="Filter by Last Name (Press Enter)"
+                    value={filterLastName}
+                    onChange={(e) => setFilterLastName(e.target.value)}
+                    style={{ width: '200px' }}
                 />
                 <Select
-                    defaultValue="all"
+                    placeholder="Filter by Enabled"
+                    value={filterEnabled}
+                    onChange={(value) => handleFilterChange(value, setFilterEnabled)}
                     style={{ width: '200px' }}
-                    onChange={handleRoleFilter}
+                    allowClear
                 >
-                    <Option value="all">All Roles</Option>
+                    <Option value={true}>Enabled</Option>
+                    <Option value={false}>Disabled</Option>
+                </Select>
+                <Select
+                    placeholder="Filter by Gender"
+                    value={filterGender}
+                    onChange={(value) => handleFilterChange(value, setFilterGender)}
+                    style={{ width: '200px' }}
+                    allowClear
+                >
+                    <Option value="MALE">Male</Option>
+                    <Option value="FEMALE">Female</Option>
+                    <Option value="OTHER">Other</Option>
+                </Select>
+                <DatePicker
+                    placeholder="Created From"
+                    value={filterCreatedFrom}
+                    onChange={(date) => handleFilterChange(date, setFilterCreatedFrom)}
+                    style={{ width: '200px' }}
+                />
+                <DatePicker
+                    placeholder="Created To"
+                    value={filterCreatedTo}
+                    onChange={(date) => handleFilterChange(date, setFilterCreatedTo)}
+                    style={{ width: '200px' }}
+                />
+                <Select
+                    placeholder="Filter by Roles"
+                    value={filterRoles}
+                    onChange={(value) => handleFilterChange(value, setFilterRoles)}
+                    style={{ width: '200px' }}
+                    allowClear
+                >
                     <Option value="ADMIN">Admin</Option>
                     <Option value="INSTRUCTOR">Instructor</Option>
                     <Option value="STUDENT">Student</Option>
                 </Select>
+                <Button type="primary" onClick={fetchData}>
+                    Apply Filters
+                </Button>
+                <Button onClick={handleResetFilters}>
+                    Reset Filters
+                </Button>
             </div>
 
             <Table
