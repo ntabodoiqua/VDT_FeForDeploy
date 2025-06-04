@@ -1,61 +1,84 @@
-import { Outlet } from "react-router-dom";
-import Header from "./components/layout/header";
-import { useContext, useEffect } from "react"
-import { AuthContext } from "./components/context/auth.context";
-import { Spin } from "antd";
-import { jwtDecode } from 'jwt-decode';
+import React, { useContext } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthContext } from './components/context/auth.context';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/login';
+import RegisterPage from './pages/register';
+import AdminDashboard from './pages/admin/Dashboard';
+import InstructorDashboard from './pages/instructor/Dashboard';
+import StudentDashboard from './pages/student/Dashboard';
+import UserManagement from './pages/admin/UserManagement';
+import CourseManagement from './pages/admin/CourseManagement';
+import LessonManagement from './pages/admin/LessonManagement';
+import Statistics from './pages/admin/Statistics';
+import InstructorCourseManagement from './pages/instructor/CourseManagement';
+import InstructorLessonManagement from './pages/instructor/LessonManagement';
+import InstructorStatistics from './pages/instructor/Statistics';
+import StudentCourses from './pages/student/Courses';
+import StudentCourseList from './pages/student/CourseList';
+import StudentCourseDetail from './pages/student/CourseDetail';
 
 function App() {
+    const { auth } = useContext(AuthContext);
 
-  const { setAuth, appLoading, setAppLoading } = useContext(AuthContext);
+    return (
+        <BrowserRouter>
+            <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={!auth.isAuthenticated ? <LoginPage /> : <Navigate to="/" replace />} />
+                <Route path="/register" element={!auth.isAuthenticated ? <RegisterPage /> : <Navigate to="/" replace />} />
 
-  useEffect(() => {
-    setAppLoading(true);
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setAuth({
-          isAuthenticated: true,
-          username: decoded.sub
-        });
-      } catch (e) {
-        setAuth({
-          isAuthenticated: false,
-          username: ''
-        });
-      }
-    } else {
-      setAuth({
-        isAuthenticated: false,
-        username: ''
-      });
-    }
-    setAppLoading(false);
-  }, []);
+                {/* Protected routes for ADMIN */}
+                <Route path="/admin" element={
+                    <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                        <AdminDashboard />
+                    </ProtectedRoute>
+                }>
+                    <Route index element={<Navigate to="users" replace />} />
+                    <Route path="users" element={<UserManagement />} />
+                    <Route path="courses" element={<CourseManagement />} />
+                    <Route path="lessons" element={<LessonManagement />} />
+                    <Route path="statistics" element={<Statistics />} />
+                </Route>
 
-  return (
-    <div>
-      {appLoading === true ?
-        <div style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)"
-        }}>
+                {/* Protected routes for INSTRUCTOR */}
+                <Route path="/instructor" element={
+                    <ProtectedRoute allowedRoles={['ROLE_INSTRUCTOR']}>
+                        <InstructorDashboard />
+                    </ProtectedRoute>
+                }>
+                    <Route index element={<Navigate to="courses" replace />} />
+                    <Route path="courses" element={<InstructorCourseManagement />} />
+                    <Route path="lessons" element={<InstructorLessonManagement />} />
+                    <Route path="statistics" element={<InstructorStatistics />} />
+                </Route>
 
-          <Spin />
+                {/* Protected routes for STUDENT */}
+                <Route path="/student" element={
+                    <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
+                        <StudentDashboard />
+                    </ProtectedRoute>
+                }>
+                    <Route index element={<Navigate to="courses" replace />} />
+                    <Route path="courses" element={<StudentCourses />} />
+                    <Route path="available-courses" element={<StudentCourseList />} />
+                    <Route path="learning/:courseId" element={<StudentCourseDetail />} />
+                </Route>
 
-        </div>
-        :
-        <>
-          <Header />
-          <Outlet />
-        </>
-      }
+                {/* Redirect root to appropriate dashboard based on role */}
+                <Route path="/" element={
+                    auth.isAuthenticated ? (
+                        auth.role === 'ROLE_ADMIN' ? <Navigate to="/admin" replace /> :
+                        auth.role === 'ROLE_INSTRUCTOR' ? <Navigate to="/instructor" replace /> :
+                        <Navigate to="/student" replace />
+                    ) : <Navigate to="/login" replace />
+                } />
 
-    </div>
-  )
+                {/* Fallback route */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
-export default App
+export default App;
