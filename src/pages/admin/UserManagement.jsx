@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form } from 'antd';
-import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
+import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form, Card, Row, Col, Statistic } from 'antd';
+import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined, EditOutlined, DeleteOutlined, KeyOutlined, BarChartOutlined } from '@ant-design/icons';
 import axiosInstance from '../../util/axios.customize';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
+import { Column, Pie, Line } from '@ant-design/charts';
 
 const { Option } = Select;
 
@@ -37,6 +38,14 @@ const UserManagement = () => {
     const [changePasswordModalVisible, setChangePasswordModalVisible] = useState(false);
     const [userForPasswordChange, setUserForPasswordChange] = useState(null);
     const [changePasswordForm] = Form.useForm();
+
+    // State for statistics
+    const [statsModalVisible, setStatsModalVisible] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(false);
+    const [newUserStats, setNewUserStats] = useState([]);
+    const [roleDistributionStats, setRoleDistributionStats] = useState([]);
+    const [statusDistributionStats, setStatusDistributionStats] = useState([]);
+    const [totalUserCount, setTotalUserCount] = useState(0);
 
     const handleFilterChange = (value, setter) => {
         setter(value);
@@ -286,6 +295,85 @@ const UserManagement = () => {
         });
     };
 
+    // --- Statistics Modal Functions ---
+    const fetchUserStatistics = async () => {
+        setStatsLoading(true);
+        try {
+            const response = await axiosInstance.get('/lms/statistics/overview');
+            console.log('Full API Response for /overview:', JSON.stringify(response, null, 2));
+
+            if (response && response.result && response.code === 1000) { 
+                const statsData = response.result; 
+
+                // 1. Total Users
+                setTotalUserCount(statsData.totalUsers || 0);
+
+                // 2. New Users by Month (transform for Column chart)
+                const transformedNewUserStats = [];
+                if (statsData.newUsersByMonth) {
+                    statsData.newUsersByMonth.forEach(monthlyStat => {
+                        const monthName = dayjs().month(monthlyStat.month - 1).format('MMM');
+                        const yearMonthLabel = `${monthName} ${monthlyStat.year}`;
+
+                        // Exclude ADMIN role data as per request
+                        // Use INSTRUCTOR and STUDENT as role names, matching API response
+                        // transformedNewUserStats.push({ month: yearMonthLabel, role: 'ADMIN', count: monthlyStat.newAdminCount });
+                        transformedNewUserStats.push({ month: yearMonthLabel, role: 'INSTRUCTOR', count: monthlyStat.newInstructorCount }); 
+                        transformedNewUserStats.push({ month: yearMonthLabel, role: 'STUDENT', count: monthlyStat.newStudentCount }); 
+                    });
+                }
+                console.log('Transformed New User Stats for Column Chart:', JSON.stringify(transformedNewUserStats, null, 2));
+                setNewUserStats(transformedNewUserStats);
+
+                // 3. Role Distribution (transform for Pie chart)
+                if (statsData.roleDistribution) {
+                    setRoleDistributionStats(
+                        statsData.roleDistribution.map(roleStat => ({
+                            type: roleStat.roleName, // This correctly uses ADMIN, INSTRUCTOR, STUDENT from API
+                            value: roleStat.count,
+                        }))
+                    );
+                }
+
+                // 4. User Status Distribution (transform for Pie chart)
+                if (statsData.userStatusDistribution) {
+                    setStatusDistributionStats([
+                        { type: 'Enabled', value: statsData.userStatusDistribution.enabledCount },
+                        { type: 'Disabled', value: statsData.userStatusDistribution.disabledCount },
+                    ]);
+                }
+
+            } else {
+                // Improved error message for unexpected API response structure or error code
+                const errorMessage = response?.message || (response?.code ? `API Error Code: ${response.code}` : 'Invalid data format or no result from API');
+                message.error(`Failed to fetch statistics: ${errorMessage}`);
+                setTotalUserCount(0);
+                setNewUserStats([]);
+                setRoleDistributionStats([]);
+                setStatusDistributionStats([]);
+            }
+        } catch (error) {
+            console.error('Error fetching user statistics:', error);
+            message.error(`Failed to fetch statistics: ${error.response?.data?.message || error.message}`);
+            setTotalUserCount(0);
+            setNewUserStats([]);
+            setRoleDistributionStats([]);
+            setStatusDistributionStats([]);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
+    const showStatsModal = () => {
+        setStatsModalVisible(true);
+        fetchUserStatistics();
+    };
+
+    const handleCancelStatsModal = () => {
+        setStatsModalVisible(false);
+    };
+    // --- End Statistics Modal Functions ---
+
     const columns = [
         {
             title: 'Username',
@@ -462,6 +550,9 @@ const UserManagement = () => {
                 </Button>
                 <Button onClick={handleResetFilters}>
                     Reset Filters
+                </Button>
+                <Button icon={<BarChartOutlined />} onClick={showStatsModal} style={{ marginLeft: 'auto' }}>
+                    User Statistics
                 </Button>
             </div>
 
@@ -643,6 +734,105 @@ const UserManagement = () => {
                     </Form>
                 </Modal>
             )}
+
+            {/* Statistics Modal */}
+            <Modal
+                title="User Statistics"
+                open={statsModalVisible}
+                onCancel={handleCancelStatsModal}
+                footer={null} // No OK/Cancel buttons for a display modal
+                width={1000} // Wider modal for charts
+                styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
+            >
+                {statsLoading ? (
+                    <p>Loading statistics...</p>
+                ) : (
+                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                        <Card>
+                            <Row gutter={16}>
+                                <Col span={8}>
+                                    <Statistic title="Total Registered Users" value={totalUserCount} />
+                                </Col>
+                                <Col span={8}>
+                                    <Statistic 
+                                        title="Instructors" 
+                                        value={roleDistributionStats.find(r => r.type === 'INSTRUCTOR')?.value || 0} 
+                                    />
+                                </Col>
+                                <Col span={8}>
+                                    <Statistic 
+                                        title="Students" 
+                                        value={roleDistributionStats.find(r => r.type === 'STUDENT')?.value || 0} 
+                                    />
+                                </Col>
+                            </Row>
+                        </Card>
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <Card title="New Users by Month & Role">
+                                    {newUserStats.length > 0 ? (
+                                        <Line
+                                            data={newUserStats}
+                                            xField='month'
+                                            yField='count'
+                                            seriesField='role'
+                                            height={300}
+                                            legend={{ position: 'top-right' }}
+                                            color={({ role }) => {
+                                                if (role === 'INSTRUCTOR') return '#ff4d4f';
+                                                if (role === 'STUDENT') return '#52c41a';
+                                                return '#8884d8';
+                                            }}
+                                        />
+                                    ) : <p>No data for new users chart.</p>}
+                                </Card>
+                            </Col>
+                            <Col span={12}>
+                                <Card title="User Role Distribution">
+                                    {roleDistributionStats.length > 0 ? (
+                                        <Pie
+                                            data={roleDistributionStats}
+                                            angleField='value'
+                                            colorField='type'
+                                            radius={0.8}
+                                            height={300}
+                                            label={{
+                                                offset: '-30%',
+                                                content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
+                                                style: { fontSize: 14, textAlign: 'center' },
+                                            }}
+                                            interactions={[{ type: 'element-active' }]}
+                                            legend={{ position: 'top-right' }}
+                                        />
+                                    ) : <p>No data for role distribution chart.</p>}
+                                </Card>
+                            </Col>
+                        </Row>
+                        <Row>
+                            <Col span={12}> 
+                                <Card title="User Status Distribution (Enabled/Disabled)">
+                                   {statusDistributionStats.length > 0 ? (
+                                        <Pie
+                                            data={statusDistributionStats}
+                                            angleField='value'
+                                            colorField='type'
+                                            radius={0.8}
+                                            height={300}
+                                            label={{
+                                                offset: '-30%',
+                                                content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
+                                                style: { fontSize: 14, textAlign: 'center' },
+                                            }}
+                                            interactions={[{ type: 'element-active' }]}
+                                            legend={{ position: 'top-right' }}
+                                        />
+                                    ) : <p>No data for status distribution chart.</p>}
+                                </Card>
+                            </Col>
+                        </Row>
+                    </Space>
+                )}
+            </Modal>
         </div>
     );
 };
