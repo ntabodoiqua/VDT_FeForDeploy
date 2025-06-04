@@ -10,15 +10,18 @@ const UserManagement = () => {
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 20,
-        total: 0
+        pageSize: 10,
+        total: 0,
+        showSizeChanger: true,
+        pageSizeOptions: ['5', '10', '15', '20'],
+        showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} bản ghi`
     });
     const [searchText, setSearchText] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
 
-    const fetchUsers = async (page = 1, pageSize = 20) => {
+    const fetchUsers = async (page = 1, pageSize = 10) => {
         try {
             setLoading(true);
             const url = `/lms/admin/manage-users?page=${page - 1}&size=${pageSize}`;
@@ -30,11 +33,12 @@ const UserManagement = () => {
             if (response.code === 1000) {
                 const { content, totalElements, totalPages, number } = response.result;
                 setUsers(content);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     current: number + 1,
-                    pageSize,
+                    pageSize: pageSize,
                     total: totalElements
-                });
+                }));
             } else {
                 console.error('API Error Code:', response.code);
                 message.error(`Failed to fetch users: ${response.message || 'Unknown error'}`);
@@ -53,11 +57,12 @@ const UserManagement = () => {
     };
 
     useEffect(() => {
-        fetchUsers();
+        fetchUsers(pagination.current, pagination.pageSize);
     }, []);
 
-    const handleTableChange = (pagination) => {
-        fetchUsers(pagination.current, pagination.pageSize);
+    const handleTableChange = (newPagination, filters, sorter) => {
+        console.log('Pagination changed:', newPagination);
+        fetchUsers(newPagination.current, newPagination.pageSize);
     };
 
     const handleSearch = (value) => {
@@ -199,6 +204,7 @@ const UserManagement = () => {
                 pagination={pagination}
                 loading={loading}
                 onChange={handleTableChange}
+                scroll={{ x: 'max-content' }}
             />
 
             <Modal
