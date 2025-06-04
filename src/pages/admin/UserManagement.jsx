@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form, Card, Row, Col, Statistic } from 'antd';
+import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form, Card, Row, Col, Statistic, Typography } from 'antd';
 import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined, EditOutlined, DeleteOutlined, KeyOutlined, BarChartOutlined } from '@ant-design/icons';
 import axiosInstance from '../../util/axios.customize';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
 import { Column, Pie, Line } from '@ant-design/charts';
+import { useNavigate } from 'react-router-dom';
 
 const { Option } = Select;
+const { Title } = Typography;
 
 const UserManagement = () => {
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
@@ -46,6 +49,16 @@ const UserManagement = () => {
     const [roleDistributionStats, setRoleDistributionStats] = useState([]);
     const [statusDistributionStats, setStatusDistributionStats] = useState([]);
     const [totalUserCount, setTotalUserCount] = useState(0);
+
+    const [permissionError, setPermissionError] = useState(false);
+
+    const handleApiPermissionError = (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            setPermissionError(true);
+            return true;
+        }
+        return false;
+    };
 
     const handleFilterChange = (value, setter) => {
         setter(value);
@@ -95,12 +108,12 @@ const UserManagement = () => {
 
         const queryParams = new URLSearchParams(params);
         const url = `/lms/admin/manage-users?${queryParams.toString()}`;
-        console.log('Request URL:', url);
+        console.log('Yêu cầu URL:', url);
 
         try {
             setLoading(true);
             const response = await axiosInstance.get(url);
-            console.log('API Response:', response);
+            console.log('Phản hồi API:', response);
 
             if (response.code === 1000) {
                 const { content, totalElements, number } = response.result;
@@ -111,17 +124,19 @@ const UserManagement = () => {
                     total: totalElements
                 }));
             } else {
-                console.error('API Error Code:', response.code);
-                message.error(`Failed to fetch users: ${response.message || 'Unknown error'}`);
+                console.error('Mã lỗi API:', response.code);
+                message.error(`Lấy danh sách người dùng thất bại: ${response.message || 'Lỗi không xác định'}`);
             }
         } catch (error) {
-            console.error('Error details:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                headers: error.response?.headers
-            });
-            message.error(`Failed to fetch users: ${error.response?.message || error.message}`);
+            if (!handleApiPermissionError(error)) {
+                console.error('Chi tiết lỗi:', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status,
+                    headers: error.response?.headers
+                });
+                message.error(`Lấy danh sách người dùng thất bại: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -136,7 +151,7 @@ const UserManagement = () => {
     }, [fetchData]);
 
     const handleTableChange = (newPagination, filters, sorter) => {
-        console.log('Table change:', newPagination, filters, sorter);
+        console.log('Thay đổi bảng:', newPagination, filters, sorter);
         setPagination(prev => ({
             ...prev,
             current: newPagination.current,
@@ -156,15 +171,17 @@ const UserManagement = () => {
             const response = await axiosInstance.put(`/lms/admin/manage-users/${userId}/${action}`);
 
             if (response.code === 1000) {
-                message.success(response.result || `User ${action}d successfully`);
+                message.success(response.result || `Người dùng đã được ${enabled ? 'kích hoạt' : 'vô hiệu hóa'} thành công`);
                 fetchData();
             } else {
-                message.error(`Failed to ${action} user: ${response.message || 'Unknown error'}`);
+                message.error(`Thay đổi trạng thái người dùng thất bại: ${response.message || 'Lỗi không xác định'}`);
             }
         } catch (error) {
-            console.error(`Error ${enabled ? 'enabling' : 'disabling'} user:`, error);
-            const actionText = enabled ? 'enable' : 'disable';
-            message.error(`Failed to ${actionText} user: ${error.response?.data?.message || error.message}`);
+            if (!handleApiPermissionError(error)) {
+                console.error(`Lỗi ${enabled ? 'kích hoạt' : 'vô hiệu hóa'} người dùng:`, error);
+                const actionText = enabled ? 'kích hoạt' : 'vô hiệu hóa';
+                message.error(`Thay đổi trạng thái người dùng thất bại: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -208,23 +225,25 @@ const UserManagement = () => {
             gender: values.gender,
         };
 
-        console.log('Updating user:', editingUser.id, 'with payload:', payload);
+        console.log('Cập nhật người dùng:', editingUser.id, 'với payload:', payload);
 
         try {
             setLoading(true);
             const response = await axiosInstance.put(`/lms/admin/manage-users/${editingUser.id}`, payload);
             if (response.code === 1000) {
-                message.success('User updated successfully!');
+                message.success('Cập nhật người dùng thành công!');
                 setEditModalVisible(false);
                 setEditingUser(null);
                 editForm.resetFields();
                 fetchData();
             } else {
-                message.error(`Failed to update user: ${response.message || 'Unknown error'}`);
+                message.error(`Cập nhật người dùng thất bại: ${response.message || 'Lỗi không xác định'}`);
             }
         } catch (error) {
-            console.error('Error updating user:', error);
-            message.error(`Failed to update user: ${error.response?.data?.message || error.message}`);
+            if (!handleApiPermissionError(error)) {
+                console.error('Lỗi cập nhật người dùng:', error);
+                message.error(`Cập nhật người dùng thất bại: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -246,20 +265,22 @@ const UserManagement = () => {
         if (!userForPasswordChange) return;
 
         const payload = { newPassword: values.newPassword };
-        console.log('Changing password for user:', userForPasswordChange.id, 'with new password.');
+        console.log('Thay đổi mật khẩu cho người dùng:', userForPasswordChange.id);
 
         try {
             setLoading(true);
             const response = await axiosInstance.put(`/lms/admin/manage-users/${userForPasswordChange.id}/change-password`, payload);
             if (response.code === 1000) {
-                message.success(response.result || 'Password changed successfully!');
+                message.success(response.result || 'Thay đổi mật khẩu thành công!');
                 handleCancelChangePasswordModal();
             } else {
-                message.error(`Failed to change password: ${response.message || 'Unknown error'}`);
+                message.error(`Thay đổi mật khẩu thất bại: ${response.message || 'Lỗi không xác định'}`);
             }
         } catch (error) {
-            console.error('Error changing password:', error);
-            message.error(`Failed to change password: ${error.response?.data?.message || error.message}`);
+            if (!handleApiPermissionError(error)) {
+                console.error('Lỗi thay đổi mật khẩu:', error);
+                message.error(`Thay đổi mật khẩu thất bại: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -267,30 +288,32 @@ const UserManagement = () => {
 
     const handleDeleteUser = (userId, username) => {
         Modal.confirm({
-            title: `Confirm Delete User`,
-            content: `Are you sure you want to delete user "${username}"? This action cannot be undone.`,
-            okText: 'Delete',
+            title: `Xác nhận Xóa Người dùng`,
+            content: `Bạn có chắc chắn muốn xóa người dùng "${username}"? Hành động này không thể hoàn tác.`,
+            okText: 'Xóa',
             okType: 'danger',
-            cancelText: 'Cancel',
+            cancelText: 'Hủy',
             onOk: async () => {
                 try {
                     setLoading(true);
                     const response = await axiosInstance.delete(`/lms/admin/manage-users/${userId}`);
                     if (response.code === 1000) {
-                        message.success(response.result || `User "${username}" deleted successfully.`);
-                        fetchData(); // Refresh table data
+                        message.success(response.result || `Người dùng "${username}" đã được xóa thành công.`);
+                        fetchData();
                     } else {
-                        message.error(`Failed to delete user "${username}": ${response.message || 'Unknown error'}`);
+                        message.error(`Xóa người dùng "${username}" thất bại: ${response.message || 'Lỗi không xác định'}`);
                     }
                 } catch (error) {
-                    console.error('Error deleting user:', error);
-                    message.error(`Failed to delete user "${username}": ${error.response?.data?.message || error.message}`);
+                    if (!handleApiPermissionError(error)) {
+                        console.error('Lỗi xóa người dùng:', error);
+                        message.error(`Xóa người dùng "${username}" thất bại: ${error.response?.data?.message || error.message}`);
+                    }
                 } finally {
                     setLoading(false);
                 }
             },
             onCancel() {
-                console.log('Delete action cancelled');
+                console.log('Hành động xóa đã bị hủy');
             },
         });
     };
@@ -300,7 +323,7 @@ const UserManagement = () => {
         setStatsLoading(true);
         try {
             const response = await axiosInstance.get('/lms/statistics/overview');
-            console.log('Full API Response for /overview:', JSON.stringify(response, null, 2));
+            console.log('Phản hồi API đầy đủ cho /overview:', JSON.stringify(response, null, 2));
 
             if (response && response.result && response.code === 1000) { 
                 const statsData = response.result; 
@@ -322,7 +345,7 @@ const UserManagement = () => {
                         transformedNewUserStats.push({ month: yearMonthLabel, role: 'STUDENT', count: monthlyStat.newStudentCount }); 
                     });
                 }
-                console.log('Transformed New User Stats for Column Chart:', JSON.stringify(transformedNewUserStats, null, 2));
+                console.log('Thống kê người dùng mới đã chuyển đổi cho Biểu đồ cột:', JSON.stringify(transformedNewUserStats, null, 2));
                 setNewUserStats(transformedNewUserStats);
 
                 // 3. Role Distribution (transform for Pie chart)
@@ -338,27 +361,31 @@ const UserManagement = () => {
                 // 4. User Status Distribution (transform for Pie chart)
                 if (statsData.userStatusDistribution) {
                     setStatusDistributionStats([
-                        { type: 'Enabled', value: statsData.userStatusDistribution.enabledCount },
-                        { type: 'Disabled', value: statsData.userStatusDistribution.disabledCount },
+                        { type: 'Kích hoạt', value: statsData.userStatusDistribution.enabledCount },
+                        { type: 'Vô hiệu hóa', value: statsData.userStatusDistribution.disabledCount },
                     ]);
                 }
 
             } else {
                 // Improved error message for unexpected API response structure or error code
-                const errorMessage = response?.message || (response?.code ? `API Error Code: ${response.code}` : 'Invalid data format or no result from API');
-                message.error(`Failed to fetch statistics: ${errorMessage}`);
+                const errorMessage = response?.message || (response?.code ? `Mã lỗi API: ${response.code}` : 'Định dạng dữ liệu không hợp lệ hoặc không có kết quả từ API');
+                message.error(`Lấy thống kê thất bại: ${errorMessage}`);
                 setTotalUserCount(0);
                 setNewUserStats([]);
                 setRoleDistributionStats([]);
                 setStatusDistributionStats([]);
             }
         } catch (error) {
-            console.error('Error fetching user statistics:', error);
-            message.error(`Failed to fetch statistics: ${error.response?.data?.message || error.message}`);
-            setTotalUserCount(0);
-            setNewUserStats([]);
-            setRoleDistributionStats([]);
-            setStatusDistributionStats([]);
+            if (handleApiPermissionError(error)) {
+                setStatsModalVisible(false);
+            } else {
+                console.error('Lỗi lấy thống kê người dùng:', error);
+                message.error(`Lấy thống kê thất bại: ${error.response?.data?.message || error.message}`);
+                setTotalUserCount(0);
+                setNewUserStats([]);
+                setRoleDistributionStats([]);
+                setStatusDistributionStats([]);
+            }
         } finally {
             setStatsLoading(false);
         }
@@ -376,14 +403,14 @@ const UserManagement = () => {
 
     const columns = [
         {
-            title: 'Username',
+            title: 'Tên đăng nhập',
             dataIndex: 'username',
             key: 'username',
             render: (text) => text || 'N/A',
             sorter: true,
         },
         {
-            title: 'Full Name',
+            title: 'Họ và tên',
             key: 'fullName',
             render: (_, record) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A'
         },
@@ -394,22 +421,22 @@ const UserManagement = () => {
             render: (text) => text || 'N/A'
         },
         {
-            title: 'Phone',
+            title: 'Điện thoại',
             dataIndex: 'phone',
             key: 'phone',
             render: (text) => text || 'N/A'
         },
         {
-            title: 'Gender',
+            title: 'Giới tính',
             dataIndex: 'gender',
             key: 'gender',
             render: (gender) => {
                 if (!gender) return 'N/A';
-                return gender === 'MALE' ? 'Male' : 'Female';
+                return gender === 'MALE' ? 'Nam' : (gender === 'FEMALE' ? 'Nữ' : 'Khác');
             }
         },
         {
-            title: 'Roles',
+            title: 'Vai trò',
             key: 'roles',
             render: (_, record) => (
                 <Space direction="vertical">
@@ -429,7 +456,7 @@ const UserManagement = () => {
             )
         },
         {
-            title: 'Status',
+            title: 'Trạng thái',
             key: 'enabled',
             render: (_, record) => (
                 <Switch
@@ -441,31 +468,30 @@ const UserManagement = () => {
             )
         },
         {
-            title: 'Actions',
+            title: 'Hành động',
             key: 'actions',
             render: (_, record) => (
                 <Space>
-                    <Tooltip title="View Details">
+                    <Tooltip title="Xem chi tiết">
                         <Button 
                             type="primary" 
                             icon={<UserOutlined />}
                             onClick={() => showUserDetails(record)}
-                        >
-                        </Button>
+                        />
                     </Tooltip>
-                    <Tooltip title="Edit User">
+                    <Tooltip title="Chỉnh sửa người dùng">
                         <Button 
                             icon={<EditOutlined />} 
                             onClick={() => showEditModal(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Change Password">
+                    <Tooltip title="Thay đổi mật khẩu">
                         <Button 
                             icon={<KeyOutlined />} 
                             onClick={() => showChangePasswordModal(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Delete User">
+                    <Tooltip title="Xóa người dùng">
                         <Button 
                             icon={<DeleteOutlined />} 
                             danger
@@ -477,6 +503,15 @@ const UserManagement = () => {
         }
     ];
 
+    if (permissionError) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Title level={2} style={{ marginBottom: '20px' }}>Bạn không có quyền truy cập</Title>
+                <Button type="primary" onClick={() => navigate('/')}>Quay lại trang chủ</Button>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: '16px', display: 'flex', gap: '16px' }}>
@@ -484,75 +519,75 @@ const UserManagement = () => {
 
             <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
                 <Input
-                    placeholder="Filter by Username (Press Enter)"
+                    placeholder="Lọc theo Tên đăng nhập"
                     value={filterUsername}
                     onChange={(e) => setFilterUsername(e.target.value)}
                     style={{ width: '200px' }}
                 />
                 <Input
-                    placeholder="Filter by First Name (Press Enter)"
+                    placeholder="Lọc theo Tên"
                     value={filterFirstName}
                     onChange={(e) => setFilterFirstName(e.target.value)}
                     style={{ width: '200px' }}
                 />
                 <Input
-                    placeholder="Filter by Last Name (Press Enter)"
+                    placeholder="Lọc theo Họ"
                     value={filterLastName}
                     onChange={(e) => setFilterLastName(e.target.value)}
                     style={{ width: '200px' }}
                 />
                 <Select
-                    placeholder="Filter by Enabled"
+                    placeholder="Lọc theo Trạng thái"
                     value={filterEnabled}
                     onChange={(value) => handleFilterChange(value, setFilterEnabled)}
                     style={{ width: '200px' }}
                     allowClear
                 >
-                    <Option value={true}>Enabled</Option>
-                    <Option value={false}>Disabled</Option>
+                    <Option value={true}>Kích hoạt</Option>
+                    <Option value={false}>Vô hiệu hóa</Option>
                 </Select>
                 <Select
-                    placeholder="Filter by Gender"
+                    placeholder="Lọc theo Giới tính"
                     value={filterGender}
                     onChange={(value) => handleFilterChange(value, setFilterGender)}
                     style={{ width: '200px' }}
                     allowClear
                 >
-                    <Option value="MALE">Male</Option>
-                    <Option value="FEMALE">Female</Option>
-                    <Option value="OTHER">Other</Option>
+                    <Option value="MALE">Nam</Option>
+                    <Option value="FEMALE">Nữ</Option>
+                    <Option value="OTHER">Khác</Option>
                 </Select>
                 <DatePicker
-                    placeholder="Created From"
+                    placeholder="Tạo từ ngày"
                     value={filterCreatedFrom}
                     onChange={(date) => handleFilterChange(date, setFilterCreatedFrom)}
                     style={{ width: '200px' }}
                 />
                 <DatePicker
-                    placeholder="Created To"
+                    placeholder="Tạo đến ngày"
                     value={filterCreatedTo}
                     onChange={(date) => handleFilterChange(date, setFilterCreatedTo)}
                     style={{ width: '200px' }}
                 />
                 <Select
-                    placeholder="Filter by Roles"
+                    placeholder="Lọc theo Vai trò"
                     value={filterRoles}
                     onChange={(value) => handleFilterChange(value, setFilterRoles)}
                     style={{ width: '200px' }}
                     allowClear
                 >
-                    <Option value="ADMIN">Admin</Option>
-                    <Option value="INSTRUCTOR">Instructor</Option>
-                    <Option value="STUDENT">Student</Option>
+                    <Option value="ADMIN">Quản trị viên</Option>
+                    <Option value="INSTRUCTOR">Giảng viên</Option>
+                    <Option value="STUDENT">Học viên</Option>
                 </Select>
                 <Button type="primary" onClick={fetchData}>
-                    Apply Filters
+                    Áp dụng Bộ lọc
                 </Button>
                 <Button onClick={handleResetFilters}>
-                    Reset Filters
+                    Đặt lại Bộ lọc
                 </Button>
                 <Button icon={<BarChartOutlined />} onClick={showStatsModal} style={{ marginLeft: 'auto' }}>
-                    User Statistics
+                    Thống kê Người dùng
                 </Button>
             </div>
 
@@ -567,7 +602,7 @@ const UserManagement = () => {
             />
 
             <Modal
-                title="User Details"
+                title="Chi tiết Người dùng"
                 open={modalVisible}
                 onCancel={() => setModalVisible(false)}
                 footer={null}
@@ -579,7 +614,7 @@ const UserManagement = () => {
                             {selectedUser.avatarUrl ? (
                                 <img 
                                     src={`http://localhost:8080/lms${selectedUser.avatarUrl}`} 
-                                    alt={`${selectedUser.username || 'User'}'s avatar`} 
+                                    alt={`Ảnh đại diện của ${selectedUser.username || 'Người dùng'}`}
                                     style={{ 
                                         width: '100px', 
                                         height: '100px', 
@@ -596,14 +631,14 @@ const UserManagement = () => {
                                 />
                             )}
                         </div>
-                        <p><strong>Username:</strong> {selectedUser.username || 'N/A'}</p>
-                        <p><strong>Full Name:</strong> {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || 'N/A'}</p>
+                        <p><strong>Tên đăng nhập:</strong> {selectedUser.username || 'N/A'}</p>
+                        <p><strong>Họ và tên:</strong> {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || 'N/A'}</p>
                         <p><strong>Email:</strong> {selectedUser.email || 'N/A'}</p>
-                        <p><strong>Phone:</strong> {selectedUser.phone || 'N/A'}</p>
-                        <p><strong>Gender:</strong> {selectedUser.gender || 'N/A'}</p>
-                        <p><strong>Date of Birth:</strong> {selectedUser.dob || 'N/A'}</p>
-                        <p><strong>Created At:</strong> {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : 'N/A'}</p>
-                        <p><strong>Roles:</strong></p>
+                        <p><strong>Điện thoại:</strong> {selectedUser.phone || 'N/A'}</p>
+                        <p><strong>Giới tính:</strong> {selectedUser.gender ? (selectedUser.gender === 'MALE' ? 'Nam' : (selectedUser.gender === 'FEMALE' ? 'Nữ' : 'Khác')) : 'N/A'}</p>
+                        <p><strong>Ngày sinh:</strong> {selectedUser.dob || 'N/A'}</p>
+                        <p><strong>Ngày tạo:</strong> {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : 'N/A'}</p>
+                        <p><strong>Vai trò:</strong></p>
                         <Space wrap>
                             {selectedUser.roles.map((role) => (
                                 <Tag 
@@ -618,14 +653,14 @@ const UserManagement = () => {
                                 </Tag>
                             ))}
                         </Space>
-                        <p><strong>Status:</strong> {selectedUser.enabled ? 'Active' : 'Inactive'}</p>
+                        <p><strong>Trạng thái:</strong> {selectedUser.enabled ? 'Hoạt động' : 'Không hoạt động'}</p>
                     </div>
                 )}
             </Modal>
 
             {editingUser && (
                 <Modal
-                    title="Edit User Information"
+                    title="Chỉnh sửa Thông tin Người dùng"
                     open={editModalVisible}
                     onCancel={handleCancelEditModal}
                     onOk={() => editForm.submit()}
@@ -635,56 +670,56 @@ const UserManagement = () => {
                     <Form form={editForm} layout="vertical" onFinish={handleUpdateUser}>
                         <Form.Item
                             name="firstName"
-                            label="First Name"
-                            rules={[{ required: true, message: 'Please input the first name!' }]}
+                            label="Tên"
+                            rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}
                         >
                             <Input />
                         </Form.Item>
                         <Form.Item
                             name="lastName"
-                            label="Last Name"
-                            rules={[{ required: true, message: 'Please input the last name!' }]}
+                            label="Họ"
+                            rules={[{ required: true, message: 'Vui lòng nhập họ!' }]}
                         >
                             <Input />
                         </Form.Item>
                         <Form.Item
                             name="email"
                             label="Email"
-                            rules={[{ type: 'email', message: 'The input is not valid E-mail!' }]}
+                            rules={[{ type: 'email', message: 'Email không hợp lệ!' }]}
                         >
                             <Input />
                         </Form.Item>
                         <Form.Item
                             name="phone"
-                            label="Phone"
+                            label="Điện thoại"
                         >
                             <Input />
                         </Form.Item>
                         <Form.Item
                             name="gender"
-                            label="Gender"
+                            label="Giới tính"
                         >
-                            <Select placeholder="Select gender" allowClear>
-                                <Option value="MALE">Male</Option>
-                                <Option value="FEMALE">Female</Option>
-                                <Option value="OTHER">Other</Option>
+                            <Select placeholder="Chọn giới tính" allowClear>
+                                <Option value="MALE">Nam</Option>
+                                <Option value="FEMALE">Nữ</Option>
+                                <Option value="OTHER">Khác</Option>
                             </Select>
                         </Form.Item>
                         <Form.Item
                             name="dob"
-                            label="Date of Birth"
+                            label="Ngày sinh"
                         >
                             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                         </Form.Item>
                         <Form.Item
                             name="roles"
-                            label="Roles"
-                            rules={[{ required: true, message: 'Please select at least one role!' }]}
+                            label="Vai trò"
+                            rules={[{ required: true, message: 'Vui lòng chọn ít nhất một vai trò!' }]}
                         >
-                            <Select mode="multiple" allowClear placeholder="Select roles">
-                                <Option value="ADMIN">Admin</Option>
-                                <Option value="INSTRUCTOR">Instructor</Option>
-                                <Option value="STUDENT">Student</Option>
+                            <Select mode="multiple" allowClear placeholder="Chọn vai trò">
+                                <Option value="ADMIN">Quản trị viên</Option>
+                                <Option value="INSTRUCTOR">Giảng viên</Option>
+                                <Option value="STUDENT">Học viên</Option>
                             </Select>
                         </Form.Item>
                     </Form>
@@ -693,7 +728,7 @@ const UserManagement = () => {
 
             {userForPasswordChange && (
                 <Modal
-                    title={`Change Password for ${userForPasswordChange.username}`}
+                    title={`Thay đổi mật khẩu cho ${userForPasswordChange.username}`}
                     open={changePasswordModalVisible}
                     onCancel={handleCancelChangePasswordModal}
                     onOk={() => changePasswordForm.submit()}
@@ -703,10 +738,10 @@ const UserManagement = () => {
                     <Form form={changePasswordForm} layout="vertical" onFinish={handleChangePassword}>
                         <Form.Item
                             name="newPassword"
-                            label="New Password"
+                            label="Mật khẩu mới"
                             rules={[
-                                { required: true, message: 'Please input the new password!' },
-                                { min: 6, message: 'Password must be at least 6 characters long!' }
+                                { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
+                                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
                             ]}
                             hasFeedback
                         >
@@ -714,17 +749,17 @@ const UserManagement = () => {
                         </Form.Item>
                         <Form.Item
                             name="confirmPassword"
-                            label="Confirm New Password"
+                            label="Xác nhận Mật khẩu mới"
                             dependencies={['newPassword']}
                             hasFeedback
                             rules={[
-                                { required: true, message: 'Please confirm your new password!' },
+                                { required: true, message: 'Vui lòng xác nhận mật khẩu mới!' },
                                 ({ getFieldValue }) => ({
                                     validator(_, value) {
                                         if (!value || getFieldValue('newPassword') === value) {
                                             return Promise.resolve();
                                         }
-                                        return Promise.reject(new Error('The two passwords that you entered do not match!'));
+                                        return Promise.reject(new Error('Hai mật khẩu bạn đã nhập không khớp!'));
                                     },
                                 }),
                             ]}
@@ -737,31 +772,31 @@ const UserManagement = () => {
 
             {/* Statistics Modal */}
             <Modal
-                title="User Statistics"
+                title="Thống kê Người dùng"
                 open={statsModalVisible}
                 onCancel={handleCancelStatsModal}
-                footer={null} // No OK/Cancel buttons for a display modal
-                width={1000} // Wider modal for charts
+                footer={null}
+                width={1000}
                 styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
             >
                 {statsLoading ? (
-                    <p>Loading statistics...</p>
+                    <p>Đang tải thống kê...</p>
                 ) : (
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
                         <Card>
                             <Row gutter={16}>
                                 <Col span={8}>
-                                    <Statistic title="Total Registered Users" value={totalUserCount} />
+                                    <Statistic title="Tổng số Người dùng Đăng ký" value={totalUserCount} />
                                 </Col>
                                 <Col span={8}>
                                     <Statistic 
-                                        title="Instructors" 
+                                        title="Giảng viên" 
                                         value={roleDistributionStats.find(r => r.type === 'INSTRUCTOR')?.value || 0} 
                                     />
                                 </Col>
                                 <Col span={8}>
                                     <Statistic 
-                                        title="Students" 
+                                        title="Học viên" 
                                         value={roleDistributionStats.find(r => r.type === 'STUDENT')?.value || 0} 
                                     />
                                 </Col>
@@ -769,7 +804,7 @@ const UserManagement = () => {
                         </Card>
                         <Row gutter={16}>
                             <Col span={12}>
-                                <Card title="New Users by Month & Role">
+                                <Card title="Người dùng mới theo Tháng & Vai trò">
                                     {newUserStats.length > 0 ? (
                                         <Line
                                             data={newUserStats}
@@ -784,11 +819,11 @@ const UserManagement = () => {
                                                 return '#8884d8';
                                             }}
                                         />
-                                    ) : <p>No data for new users chart.</p>}
+                                    ) : <p>Không có dữ liệu cho biểu đồ người dùng mới.</p>}
                                 </Card>
                             </Col>
                             <Col span={12}>
-                                <Card title="User Role Distribution">
+                                <Card title="Phân bổ Vai trò Người dùng">
                                     {roleDistributionStats.length > 0 ? (
                                         <Pie
                                             data={roleDistributionStats}
@@ -804,13 +839,13 @@ const UserManagement = () => {
                                             interactions={[{ type: 'element-active' }]}
                                             legend={{ position: 'top-right' }}
                                         />
-                                    ) : <p>No data for role distribution chart.</p>}
+                                    ) : <p>Không có dữ liệu cho biểu đồ phân bổ vai trò.</p>}
                                 </Card>
                             </Col>
                         </Row>
                         <Row>
                             <Col span={12}> 
-                                <Card title="User Status Distribution (Enabled/Disabled)">
+                                <Card title="Phân bổ Trạng thái Người dùng (Kích hoạt/Vô hiệu hóa)">
                                    {statusDistributionStats.length > 0 ? (
                                         <Pie
                                             data={statusDistributionStats}
@@ -826,7 +861,7 @@ const UserManagement = () => {
                                             interactions={[{ type: 'element-active' }]}
                                             legend={{ position: 'top-right' }}
                                         />
-                                    ) : <p>No data for status distribution chart.</p>}
+                                    ) : <p>Không có dữ liệu cho biểu đồ phân bổ trạng thái.</p>}
                                 </Card>
                             </Col>
                         </Row>
