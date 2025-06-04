@@ -1,34 +1,38 @@
 import { Outlet } from "react-router-dom";
 import Header from "./components/layout/header";
-import axios from "./util/axios.customize"
 import { useContext, useEffect } from "react"
 import { AuthContext } from "./components/context/auth.context";
 import { Spin } from "antd";
+import { jwtDecode } from 'jwt-decode';
 
 function App() {
 
   const { setAuth, appLoading, setAppLoading } = useContext(AuthContext);
 
   useEffect(() => {
-    const fetchAccount = async () => {
-      setAppLoading(true);
-      const res = await axios.get(`/v1/api/account`);
-      if (res && !res.message) {
+    setAppLoading(true);
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
         setAuth({
           isAuthenticated: true,
-          user: {
-            email: res.email,
-            name: res.name
-          }
-        })
+          username: decoded.sub
+        });
+      } catch (e) {
+        setAuth({
+          isAuthenticated: false,
+          username: ''
+        });
       }
-      setAppLoading(false);
+    } else {
+      setAuth({
+        isAuthenticated: false,
+        username: ''
+      });
     }
-
-    fetchAccount()
-  }, [])
-
-
+    setAppLoading(false);
+  }, []);
 
   return (
     <div>

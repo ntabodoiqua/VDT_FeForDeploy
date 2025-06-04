@@ -1,42 +1,44 @@
-
 import React, { useContext } from 'react';
 import { Button, Col, Divider, Form, Input, notification, Row } from 'antd';
 import { loginApi } from '../util/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../components/context/auth.context';
 import { ArrowLeftOutlined } from '@ant-design/icons';
+import { jwtDecode } from 'jwt-decode';
 
 const LoginPage = () => {
     const navigate = useNavigate();
     const { setAuth } = useContext(AuthContext);
 
     const onFinish = async (values) => {
-        const { email, password } = values;
-
-        const res = await loginApi(email, password);
-
-        if (res && res.EC === 0) {
-            localStorage.setItem("access_token", res.access_token)
-            notification.success({
-                message: "LOGIN USER",
-                description: "Success"
-            });
-            setAuth({
-                isAuthenticated: true,
-                user: {
-                    email: res?.user?.email ?? "",
-                    name: res?.user?.name ?? ""
-                }
-            })
-            navigate("/");
-
-        } else {
+        const { username, password } = values;
+        try {
+            const res = await loginApi(username, password);
+            if (res && res.code === 1000 && res.result?.token) {
+                localStorage.setItem("access_token", res.result.token);
+                // decode token để lấy username (sub)
+                const decoded = jwtDecode(res.result.token);
+                setAuth({
+                    isAuthenticated: true,
+                    username: decoded.sub
+                });
+                notification.success({
+                    message: "LOGIN USER",
+                    description: "Success"
+                });
+                navigate("/");
+            } else {
+                notification.error({
+                    message: "LOGIN USER",
+                    description: res?.message || "Login failed"
+                });
+            }
+        } catch (err) {
             notification.error({
                 message: "LOGIN USER",
-                description: res?.EM ?? "error"
-            })
+                description: "Login failed"
+            });
         }
-
     };
 
     return (
@@ -56,12 +58,12 @@ const LoginPage = () => {
                         layout='vertical'
                     >
                         <Form.Item
-                            label="Email"
-                            name="email"
+                            label="Username"
+                            name="username"
                             rules={[
                                 {
                                     required: true,
-                                    message: 'Please input your email!',
+                                    message: 'Please input your username!',
                                 },
                             ]}
                         >

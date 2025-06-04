@@ -22,21 +22,18 @@ const Header = () => {
         }] : []),
 
         {
-            label: `Welcome ${auth?.user?.email ?? ""}`,
+            label: `Welcome ${auth?.username ?? ""}`,
             key: 'SubMenu',
             icon: <SettingOutlined />,
             children: [
                 ...(auth.isAuthenticated ? [{
                     label: <span onClick={() => {
-                        localStorage.clear("access_token");
+                        localStorage.removeItem("access_token");
                         setCurrent("home");
                         setAuth({
                             isAuthenticated: false,
-                            user: {
-                                email: "",
-                                name: ""
-                            }
-                        })
+                            username: ''
+                        });
                         navigate("/");
 
                     }}>Đăng xuất</span>,

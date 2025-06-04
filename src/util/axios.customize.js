@@ -4,11 +4,26 @@ const instance = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_URL
 });
 
-// Alter defaults after instance has been created
 // Add a request interceptor
 instance.interceptors.request.use(function (config) {
-    // Do something before request is sent
-    config.headers.Authorization = `Bearer ${localStorage.getItem("access_token")}`;
+    // Không thêm token cho login và register
+    const noAuthPaths = [
+        '/auth/token',
+        '/users'
+    ];
+    // Nếu url không nằm trong danh sách noAuthPaths thì thêm token
+    if (!noAuthPaths.some(path => config.url && config.url.startsWith(path))) {
+        const token = localStorage.getItem("access_token");
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        } else {
+            // Xóa Authorization nếu không có token
+            delete config.headers.Authorization;
+        }
+    } else {
+        // Đảm bảo không có Authorization cho login/register
+        delete config.headers.Authorization;
+    }
     return config;
 }, function (error) {
     // Do something with request error
