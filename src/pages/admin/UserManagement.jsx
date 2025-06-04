@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker } from 'antd';
-import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
+import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form } from 'antd';
+import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
 import axiosInstance from '../../util/axios.customize';
 import { debounce } from 'lodash';
+import dayjs from 'dayjs';
 
 const { Option } = Select;
 
@@ -28,6 +29,14 @@ const UserManagement = () => {
     const [filterCreatedTo, setFilterCreatedTo] = useState(null);
     const [filterRoles, setFilterRoles] = useState(null);
     const [currentSorter, setCurrentSorter] = useState({ field: 'username', order: 'ascend' });
+
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm] = Form.useForm();
+
+    const [changePasswordModalVisible, setChangePasswordModalVisible] = useState(false);
+    const [userForPasswordChange, setUserForPasswordChange] = useState(null);
+    const [changePasswordForm] = Form.useForm();
 
     const handleFilterChange = (value, setter) => {
         setter(value);
@@ -133,18 +142,148 @@ const UserManagement = () => {
 
     const handleStatusChange = async (userId, enabled) => {
         try {
-            await axiosInstance.put(`/api/users/${userId}/status`, { enabled });
-            message.success(`User ${enabled ? 'enabled' : 'disabled'} successfully`);
-            fetchData();
+            setLoading(true);
+            const action = enabled ? 'enable' : 'disable';
+            const response = await axiosInstance.put(`/lms/admin/manage-users/${userId}/${action}`);
+
+            if (response.code === 1000) {
+                message.success(response.result || `User ${action}d successfully`);
+                fetchData();
+            } else {
+                message.error(`Failed to ${action} user: ${response.message || 'Unknown error'}`);
+            }
         } catch (error) {
-            console.error('Error updating user status:', error);
-            message.error('Failed to update user status');
+            console.error(`Error ${enabled ? 'enabling' : 'disabling'} user:`, error);
+            const actionText = enabled ? 'enable' : 'disable';
+            message.error(`Failed to ${actionText} user: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
     const showUserDetails = (user) => {
         setSelectedUser(user);
         setModalVisible(true);
+    };
+
+    const showEditModal = (user) => {
+        setEditingUser(user);
+        editForm.setFieldsValue({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            dob: user.dob ? dayjs(user.dob) : null,
+            roles: user.roles.map(role => role.name),
+            email: user.email,
+            phone: user.phone,
+            gender: user.gender,
+        });
+        setEditModalVisible(true);
+    };
+
+    const handleCancelEditModal = () => {
+        setEditModalVisible(false);
+        setEditingUser(null);
+        editForm.resetFields();
+    };
+
+    const handleUpdateUser = async (values) => {
+        if (!editingUser) return;
+
+        const payload = {
+            firstName: values.firstName,
+            lastName: values.lastName,
+            dob: values.dob ? values.dob.format('YYYY-MM-DD') : null,
+            roles: values.roles,
+            email: values.email,
+            phone: values.phone,
+            gender: values.gender,
+        };
+
+        console.log('Updating user:', editingUser.id, 'with payload:', payload);
+
+        try {
+            setLoading(true);
+            const response = await axiosInstance.put(`/lms/admin/manage-users/${editingUser.id}`, payload);
+            if (response.code === 1000) {
+                message.success('User updated successfully!');
+                setEditModalVisible(false);
+                setEditingUser(null);
+                editForm.resetFields();
+                fetchData();
+            } else {
+                message.error(`Failed to update user: ${response.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating user:', error);
+            message.error(`Failed to update user: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const showChangePasswordModal = (user) => {
+        setUserForPasswordChange(user);
+        changePasswordForm.resetFields();
+        setChangePasswordModalVisible(true);
+    };
+
+    const handleCancelChangePasswordModal = () => {
+        setChangePasswordModalVisible(false);
+        setUserForPasswordChange(null);
+        changePasswordForm.resetFields();
+    };
+
+    const handleChangePassword = async (values) => {
+        if (!userForPasswordChange) return;
+
+        const payload = { newPassword: values.newPassword };
+        console.log('Changing password for user:', userForPasswordChange.id, 'with new password.');
+
+        try {
+            setLoading(true);
+            const response = await axiosInstance.put(`/lms/admin/manage-users/${userForPasswordChange.id}/change-password`, payload);
+            if (response.code === 1000) {
+                message.success(response.result || 'Password changed successfully!');
+                handleCancelChangePasswordModal();
+            } else {
+                message.error(`Failed to change password: ${response.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            message.error(`Failed to change password: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteUser = (userId, username) => {
+        Modal.confirm({
+            title: `Confirm Delete User`,
+            content: `Are you sure you want to delete user "${username}"? This action cannot be undone.`,
+            okText: 'Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    setLoading(true);
+                    const response = await axiosInstance.delete(`/lms/admin/manage-users/${userId}`);
+                    if (response.code === 1000) {
+                        message.success(response.result || `User "${username}" deleted successfully.`);
+                        fetchData(); // Refresh table data
+                    } else {
+                        message.error(`Failed to delete user "${username}": ${response.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting user:', error);
+                    message.error(`Failed to delete user "${username}": ${error.response?.data?.message || error.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            },
+            onCancel() {
+                console.log('Delete action cancelled');
+            },
+        });
     };
 
     const columns = [
@@ -185,7 +324,7 @@ const UserManagement = () => {
             title: 'Roles',
             key: 'roles',
             render: (_, record) => (
-                <Space>
+                <Space direction="vertical">
                     {record.roles.map((role) => (
                         <Tag 
                             key={role.name}
@@ -224,8 +363,26 @@ const UserManagement = () => {
                             icon={<UserOutlined />}
                             onClick={() => showUserDetails(record)}
                         >
-                            Details
                         </Button>
+                    </Tooltip>
+                    <Tooltip title="Edit User">
+                        <Button 
+                            icon={<EditOutlined />} 
+                            onClick={() => showEditModal(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Change Password">
+                        <Button 
+                            icon={<KeyOutlined />} 
+                            onClick={() => showChangePasswordModal(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete User">
+                        <Button 
+                            icon={<DeleteOutlined />} 
+                            danger
+                            onClick={() => handleDeleteUser(record.id, record.username)}
+                        />
                     </Tooltip>
                 </Space>
             )
@@ -374,6 +531,118 @@ const UserManagement = () => {
                     </div>
                 )}
             </Modal>
+
+            {editingUser && (
+                <Modal
+                    title="Edit User Information"
+                    open={editModalVisible}
+                    onCancel={handleCancelEditModal}
+                    onOk={() => editForm.submit()}
+                    confirmLoading={loading}
+                    width={600}
+                >
+                    <Form form={editForm} layout="vertical" onFinish={handleUpdateUser}>
+                        <Form.Item
+                            name="firstName"
+                            label="First Name"
+                            rules={[{ required: true, message: 'Please input the first name!' }]}
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="lastName"
+                            label="Last Name"
+                            rules={[{ required: true, message: 'Please input the last name!' }]}
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="email"
+                            label="Email"
+                            rules={[{ type: 'email', message: 'The input is not valid E-mail!' }]}
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="phone"
+                            label="Phone"
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="gender"
+                            label="Gender"
+                        >
+                            <Select placeholder="Select gender" allowClear>
+                                <Option value="MALE">Male</Option>
+                                <Option value="FEMALE">Female</Option>
+                                <Option value="OTHER">Other</Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item
+                            name="dob"
+                            label="Date of Birth"
+                        >
+                            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                        </Form.Item>
+                        <Form.Item
+                            name="roles"
+                            label="Roles"
+                            rules={[{ required: true, message: 'Please select at least one role!' }]}
+                        >
+                            <Select mode="multiple" allowClear placeholder="Select roles">
+                                <Option value="ADMIN">Admin</Option>
+                                <Option value="INSTRUCTOR">Instructor</Option>
+                                <Option value="STUDENT">Student</Option>
+                            </Select>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+            )}
+
+            {userForPasswordChange && (
+                <Modal
+                    title={`Change Password for ${userForPasswordChange.username}`}
+                    open={changePasswordModalVisible}
+                    onCancel={handleCancelChangePasswordModal}
+                    onOk={() => changePasswordForm.submit()}
+                    confirmLoading={loading}
+                    width={400}
+                >
+                    <Form form={changePasswordForm} layout="vertical" onFinish={handleChangePassword}>
+                        <Form.Item
+                            name="newPassword"
+                            label="New Password"
+                            rules={[
+                                { required: true, message: 'Please input the new password!' },
+                                { min: 6, message: 'Password must be at least 6 characters long!' }
+                            ]}
+                            hasFeedback
+                        >
+                            <Input.Password />
+                        </Form.Item>
+                        <Form.Item
+                            name="confirmPassword"
+                            label="Confirm New Password"
+                            dependencies={['newPassword']}
+                            hasFeedback
+                            rules={[
+                                { required: true, message: 'Please confirm your new password!' },
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        if (!value || getFieldValue('newPassword') === value) {
+                                            return Promise.resolve();
+                                        }
+                                        return Promise.reject(new Error('The two passwords that you entered do not match!'));
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Input.Password />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+            )}
         </div>
     );
 };
