@@ -327,6 +327,27 @@ const UserManagement = () => {
             >
                 {selectedUser && (
                     <div>
+                        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                            {selectedUser.avatarUrl ? (
+                                <img 
+                                    src={`http://localhost:8080/lms${selectedUser.avatarUrl}`} 
+                                    alt={`${selectedUser.username || 'User'}'s avatar`} 
+                                    style={{ 
+                                        width: '100px', 
+                                        height: '100px', 
+                                        borderRadius: '50%', 
+                                        objectFit: 'cover' 
+                                    }} 
+                                />
+                            ) : (
+                                <UserOutlined 
+                                    style={{ 
+                                        fontSize: '100px',
+                                        color: '#ccc',
+                                    }} 
+                                />
+                            )}
+                        </div>
                         <p><strong>Username:</strong> {selectedUser.username || 'N/A'}</p>
                         <p><strong>Full Name:</strong> {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || 'N/A'}</p>
                         <p><strong>Email:</strong> {selectedUser.email || 'N/A'}</p>
