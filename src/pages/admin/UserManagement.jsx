@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Table, Space, Button, Input, Select, Tag, Switch, message, Modal, Tooltip, DatePicker, Form, Card, Row, Col, Statistic, Typography } from 'antd';
 import { SearchOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined, LockOutlined, UnlockOutlined, EditOutlined, DeleteOutlined, KeyOutlined, BarChartOutlined } from '@ant-design/icons';
-import axiosInstance from '../../util/axios.customize';
+import {
+    fetchUsersApi,
+    updateUserStatusApi,
+    updateUserDetailsApi,
+    changeUserPasswordApi,
+    deleteUserApi,
+    fetchUserStatisticsApi
+} from '../../util/api';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
 import { Column, Pie, Line } from '@ant-design/charts';
@@ -112,7 +119,7 @@ const UserManagement = () => {
 
         try {
             setLoading(true);
-            const response = await axiosInstance.get(url);
+            const response = await fetchUsersApi(params);
             console.log('Phản hồi API:', response);
 
             if (response.code === 1000) {
@@ -168,7 +175,7 @@ const UserManagement = () => {
         try {
             setLoading(true);
             const action = enabled ? 'enable' : 'disable';
-            const response = await axiosInstance.put(`/lms/admin/manage-users/${userId}/${action}`);
+            const response = await updateUserStatusApi(userId, action);
 
             if (response.code === 1000) {
                 message.success(response.result || `Người dùng đã được ${enabled ? 'kích hoạt' : 'vô hiệu hóa'} thành công`);
@@ -229,7 +236,7 @@ const UserManagement = () => {
 
         try {
             setLoading(true);
-            const response = await axiosInstance.put(`/lms/admin/manage-users/${editingUser.id}`, payload);
+            const response = await updateUserDetailsApi(editingUser.id, payload);
             if (response.code === 1000) {
                 message.success('Cập nhật người dùng thành công!');
                 setEditModalVisible(false);
@@ -269,7 +276,7 @@ const UserManagement = () => {
 
         try {
             setLoading(true);
-            const response = await axiosInstance.put(`/lms/admin/manage-users/${userForPasswordChange.id}/change-password`, payload);
+            const response = await changeUserPasswordApi(userForPasswordChange.id, payload);
             if (response.code === 1000) {
                 message.success(response.result || 'Thay đổi mật khẩu thành công!');
                 handleCancelChangePasswordModal();
@@ -296,7 +303,7 @@ const UserManagement = () => {
             onOk: async () => {
                 try {
                     setLoading(true);
-                    const response = await axiosInstance.delete(`/lms/admin/manage-users/${userId}`);
+                    const response = await deleteUserApi(userId);
                     if (response.code === 1000) {
                         message.success(response.result || `Người dùng "${username}" đã được xóa thành công.`);
                         fetchData();
@@ -322,7 +329,7 @@ const UserManagement = () => {
     const fetchUserStatistics = async () => {
         setStatsLoading(true);
         try {
-            const response = await axiosInstance.get('/lms/statistics/overview');
+            const response = await fetchUserStatisticsApi();
             console.log('Phản hồi API đầy đủ cho /overview:', JSON.stringify(response, null, 2));
 
             if (response && response.result && response.code === 1000) { 

@@ -11,6 +11,9 @@ import {
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
 
+
+import siteLogo from '../../assets/images/logo.png'; 
+
 const { Header, Sider, Content } = Layout;
 
 const AdminDashboard = () => {
@@ -70,7 +73,25 @@ const AdminDashboard = () => {
     return (
         <Layout style={{ minHeight: '100vh' }}>
             <Sider width={250} theme="light">
-                <div style={{ height: 32, margin: 16, background: 'rgba(0, 0, 0, 0.2)' }} />
+                {/* Logo Section */}
+                <div 
+                    style={{
+                        height: '64px', // Adjust height to match Header or your preference
+                        margin: '0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '16px',
+                        borderBottom: '1px solid #f0f0f0', // Optional: if you want a separator
+                        // background: 'rgba(0, 0, 0, 0.02)' // Optional: slight background tint
+                    }}
+                >
+                    {/* Use the imported siteLogo */}
+                    {siteLogo ? 
+                        <img src={siteLogo} alt="Logo Trang Web" style={{ height: '40px', maxWidth: '180px' /* Adjust as needed */ }} /> : 
+                        <div style={{fontSize: '20px', fontWeight: 'bold', color: '#001529'}}>Logo</div> // Fallback if logo fails to load
+                    }
+                </div>
                 <Menu
                     mode="inline"
                     selectedKeys={[getSelectedKey()]}
