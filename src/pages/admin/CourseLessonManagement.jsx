@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination } from 'antd';
-import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled } from '@ant-design/icons';
-import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi } from '../../util/api';
+import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination, Descriptions, Tag, Spin, Image } from 'antd';
+import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi, fetchCourseByIdApi, fetchLessonByIdApi, fetchCourseLessonDetailsApi } from '../../util/api';
 
 const { Title } = Typography;
 const { Content } = Layout;
@@ -35,6 +35,33 @@ const CourseLessonManagement = () => {
     const [loadingLessons, setLoadingLessons] = useState(false);
     const [isAddLessonModalVisible, setIsAddLessonModalVisible] = useState(false);
     const [lessonsToAdd, setLessonsToAdd] = useState([]);
+
+    // State for Course Details Modal
+    const [isCourseDetailsModalVisible, setIsCourseDetailsModalVisible] = useState(false);
+    const [selectedCourseDetails, setSelectedCourseDetails] = useState(null);
+    const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
+
+    // State for Lesson Details Modal
+    const [isLessonDetailsModalVisible, setIsLessonDetailsModalVisible] = useState(false);
+    const [currentCourseLessonContext, setCurrentCourseLessonContext] = useState(null);
+    const [fetchedLessonDetails, setFetchedLessonDetails] = useState(null);
+    const [loadingLessonDetails, setLoadingLessonDetails] = useState(false);
+
+    // Helper function to get displayable image URL
+    const getDisplayImageUrl = (urlPath) => {
+        if (!urlPath) return null;
+        if (urlPath.startsWith('http://') || urlPath.startsWith('https://')) {
+            return urlPath;
+        }
+        // Assuming backend serves images from a base URL if path starts with '/'
+        // Update this if your backend serves images differently
+        if (urlPath.startsWith('/')) { 
+            const API_IMAGE_BASE_URL = 'http://localhost:8080/lms'; // Example, adjust as needed
+            return `${API_IMAGE_BASE_URL}${encodeURI(urlPath)}`;
+        }
+        console.warn(`getDisplayImageUrl: Encountered an image path in an unexpected format: ${urlPath}`);
+        return urlPath; // Fallback for other cases, or could return null
+    };
 
     // Fetch courses on component mount
     useEffect(() => {
@@ -114,7 +141,7 @@ const CourseLessonManagement = () => {
             setLessonsInCourse([]);
             setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
         }
-    }, [selectedCourse, loadLessonsForSelectedCourse]);
+    }, [selectedCourse, loadLessonsForSelectedCourse, lessonListVersion]);
 
     // Fetch all system lessons when modal is opened or its pagination changes
     useEffect(() => {
@@ -157,7 +184,6 @@ const CourseLessonManagement = () => {
     const handleCourseSelect = (course) => {
         setSelectedCourse(course);
         setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
-        setLessonListVersion(v => v + 1);
     };
 
     const showAddLessonModal = () => {
@@ -231,7 +257,11 @@ const CourseLessonManagement = () => {
                     if (apiResponse && apiResponse.code === 1000) {
                         message.success(apiResponse.result || 'Bài học đã được xóa khỏi khóa học thành công.');
                         // Refresh the list of lessons
-                        setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
+                        if (lessonsInCourse.length === 1 && lessonPagination.current > 1) {
+                            setLessonPagination(prev => ({ ...prev, current: prev.current - 1, total: prev.total -1 }));
+                        } else {
+                            setLessonPagination(prev => ({ ...prev, total: prev.total -1 }));
+                        }
                         setLessonListVersion(v => v + 1);
                     } else {
                         message.error(apiResponse?.message || 'Không thể xóa bài học khỏi khóa học.');
@@ -266,6 +296,96 @@ const CourseLessonManagement = () => {
         setAllLessonsModalPagination(prev => ({ ...prev, current: pagination.current, pageSize: pagination.pageSize }));
     };
 
+    // Handlers for Course Details Modal
+    const handleOpenCourseDetailsModal = async (courseId) => {
+        setLoadingCourseDetails(true);
+        setIsCourseDetailsModalVisible(true);
+        try {
+            const apiResponse = await fetchCourseByIdApi(courseId);
+            if (apiResponse && apiResponse.code === 1000) {
+                setSelectedCourseDetails(apiResponse.result);
+            } else {
+                message.error(apiResponse?.message || 'Failed to fetch course details.');
+                setIsCourseDetailsModalVisible(false);
+            }
+        } catch (error) {
+            message.error(error.response?.data?.message || error.message || 'Error fetching course details.');
+            setIsCourseDetailsModalVisible(false);
+        }
+        setLoadingCourseDetails(false);
+    };
+
+    const handleCloseCourseDetailsModal = () => {
+        setIsCourseDetailsModalVisible(false);
+        setSelectedCourseDetails(null);
+    };
+
+    // Handlers for Lesson Details Modal
+    const handleOpenLessonDetailsModal = async (courseLessonItem) => {
+        console.log("=== DEBUG: handleOpenLessonDetailsModal ===");
+        console.log("courseLessonItem:", courseLessonItem);
+        console.log("selectedCourse:", selectedCourse);
+        
+        if (!selectedCourse || !courseLessonItem || !courseLessonItem.id) {
+            console.log("ERROR: Invalid course or lesson data provided.");
+            console.log("selectedCourse exists:", !!selectedCourse);
+            console.log("courseLessonItem exists:", !!courseLessonItem);
+            console.log("courseLessonItem.id exists:", !!courseLessonItem?.id);
+            message.error('Invalid course or lesson data provided.');
+            setIsLessonDetailsModalVisible(false);
+            return;
+        }
+
+        setCurrentCourseLessonContext(courseLessonItem);
+        setIsLessonDetailsModalVisible(true);
+        setLoadingLessonDetails(true);
+        setFetchedLessonDetails(null);
+
+        console.log("Making API call with:");
+        console.log("selectedCourse.id:", selectedCourse.id);
+        console.log("courseLessonItem.id:", courseLessonItem.id);
+        console.log("Full URL will be:", `/lms/courses/${selectedCourse.id}/lessons/${courseLessonItem.id}`);
+
+        try {
+            const apiResponse = await fetchCourseLessonDetailsApi(selectedCourse.id, courseLessonItem.id);
+            console.log("API Response (fetchCourseLessonDetailsApi):", apiResponse);
+            console.log("API Response code:", apiResponse?.code);
+            console.log("API Response result:", apiResponse?.result);
+            
+            if (apiResponse && apiResponse.code === 1000 && apiResponse.result) {
+                console.log("Setting fetchedLessonDetails to:", apiResponse.result);
+                setFetchedLessonDetails(apiResponse.result);
+            } else {
+                console.log("ERROR: API response failed or missing result");
+                console.log("apiResponse exists:", !!apiResponse);
+                console.log("apiResponse.code === 1000:", apiResponse?.code === 1000);
+                console.log("apiResponse.result exists:", !!apiResponse?.result);
+                message.error(apiResponse?.message || 'Failed to fetch detailed lesson information for this course.');
+            }
+        } catch (error) {
+            console.log("ERROR: Exception in fetchCourseLessonDetailsApi:", error);
+            console.log("Error response:", error.response);
+            console.log("Error data:", error.response?.data);
+            console.log("Error message:", error.message);
+            
+            let errorMessage = 'Error fetching detailed lesson information.';
+            if (error.response?.data?.message) errorMessage = error.response.data.message;
+            else if (error.data?.message) errorMessage = error.data.message;
+            else if (error.message) errorMessage = error.message;
+            message.error(errorMessage);
+        } finally {
+            console.log("Setting loadingLessonDetails to false");
+            setLoadingLessonDetails(false);
+        }
+    };
+
+    const handleCloseLessonDetailsModal = () => {
+        setIsLessonDetailsModalVisible(false);
+        setCurrentCourseLessonContext(null);
+        setFetchedLessonDetails(null);
+        setLoadingLessonDetails(false);
+    };
+
     return (
         <Layout style={{ padding: '24px' }}>
             <Content>
@@ -280,7 +400,14 @@ const CourseLessonManagement = () => {
                                 dataSource={courses}
                                 renderItem={course => (
                                     <List.Item
-                                        actions={[<Button type="link" icon={<ReadOutlined />} onClick={() => handleCourseSelect(course)}>View Lessons</Button>]}
+                                        actions={[
+                                            <Tooltip title="View course lessons">
+                                                <Button type="link" icon={<ReadOutlined />} onClick={() => handleCourseSelect(course)} />
+                                            </Tooltip>,
+                                            <Tooltip title="View course details">
+                                                <Button type="link" icon={<InfoCircleOutlined />} onClick={() => handleOpenCourseDetailsModal(course.id)} />
+                                            </Tooltip>
+                                        ]}
                                         style={{ 
                                             cursor: 'pointer',
                                             backgroundColor: selectedCourse?.id === course.id ? '#e6f7ff' : 'transparent'
@@ -333,6 +460,9 @@ const CourseLessonManagement = () => {
                                 renderItem={item => (
                                     <List.Item
                                         actions={[
+                                            <Tooltip title="View lesson details">
+                                                <Button type="text" icon={<InfoCircleOutlined />} onClick={() => handleOpenLessonDetailsModal(item)} />
+                                            </Tooltip>,
                                             <Tooltip title="Remove lesson from course">
                                                 <Button 
                                                     danger 
@@ -404,6 +534,145 @@ const CourseLessonManagement = () => {
                         onChange={handleAllLessonsModalTableChange}
                         scroll={{ y: 300 }}
                     />
+                </Modal>
+
+                {/* Modal to View Course Details */}
+                <Modal
+                    title="Course Details"
+                    open={isCourseDetailsModalVisible}
+                    onCancel={handleCloseCourseDetailsModal}
+                    footer={null}
+                    width={800}
+                >
+                    {loadingCourseDetails && <div style={{ textAlign: 'center', padding: '20px' }}><Spin size="large" /><p>Loading details...</p></div>}
+                    {!loadingCourseDetails && selectedCourseDetails && (
+                        <Descriptions bordered column={1} size="small" layout="horizontal">
+                            <Descriptions.Item label="ID">{selectedCourseDetails.id}</Descriptions.Item>
+                            <Descriptions.Item label="Tên khóa học">{selectedCourseDetails.title}</Descriptions.Item>
+                            <Descriptions.Item label="Mô tả">{selectedCourseDetails.description}</Descriptions.Item>
+                            <Descriptions.Item label="Mô tả chi tiết">{selectedCourseDetails.detailedDescription || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Danh mục">{selectedCourseDetails.category?.name || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Ảnh đại diện">
+                                {selectedCourseDetails.thumbnailUrl ? (
+                                    <Image 
+                                        width={100} 
+                                        src={getDisplayImageUrl(selectedCourseDetails.thumbnailUrl)}
+                                        alt={selectedCourseDetails.title} 
+                                    />
+                                ) : 'N/A'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tổng số bài học">{selectedCourseDetails.totalLessons === undefined ? 'N/A' : selectedCourseDetails.totalLessons}</Descriptions.Item>
+                            <Descriptions.Item label="Ngày bắt đầu">{selectedCourseDetails.startDate ? new Date(selectedCourseDetails.startDate).toLocaleDateString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Ngày kết thúc">{selectedCourseDetails.endDate ? new Date(selectedCourseDetails.endDate).toLocaleDateString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Ngày tạo">{selectedCourseDetails.createdAt ? new Date(selectedCourseDetails.createdAt).toLocaleString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Cập nhật gần nhất">{selectedCourseDetails.updatedAt ? new Date(selectedCourseDetails.updatedAt).toLocaleString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            {selectedCourseDetails.instructor && (
+                                <Descriptions.Item label="Giảng viên">
+                                    <Space>
+                                        {selectedCourseDetails.instructor.avatarUrl && 
+                                            <Image 
+                                                width={30} 
+                                                height={30}
+                                                src={getDisplayImageUrl(selectedCourseDetails.instructor.avatarUrl)} 
+                                                alt="avatar" 
+                                                style={{ borderRadius: '50%', objectFit: 'cover'}} 
+                                                preview={false}
+                                            />}
+                                        <span>{`${selectedCourseDetails.instructor.firstName || ''} ${selectedCourseDetails.instructor.lastName || ''} (${selectedCourseDetails.instructor.username || 'N/A'})`}</span>
+                                    </Space>
+                                </Descriptions.Item>
+                            )}
+                            <Descriptions.Item label="Yêu cầu duyệt">
+                                <Tag color={selectedCourseDetails.requiresApproval ? "warning" : "default"}>
+                                    {selectedCourseDetails.requiresApproval ? "Có" : "Không"}
+                                </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Trạng thái">
+                                <Tag color={selectedCourseDetails.isActive === undefined ? "default" : (selectedCourseDetails.isActive ? "success" : "error")}>
+                                    {selectedCourseDetails.isActive === undefined ? "N/A" : (selectedCourseDetails.isActive ? "Đang mở" : "Đã đóng")}
+                                </Tag>
+                            </Descriptions.Item>
+                        </Descriptions>
+                    )}
+                    {!loadingCourseDetails && !selectedCourseDetails && (
+                        <p>Course details could not be loaded or are not available.</p>
+                    )}
+                </Modal>
+
+                {/* Modal to View Lesson Details */}
+                <Modal
+                    title="Lesson Details"
+                    open={isLessonDetailsModalVisible}
+                    onCancel={handleCloseLessonDetailsModal}
+                    footer={[
+                        <Button key="back" onClick={handleCloseLessonDetailsModal}>
+                            Close
+                        </Button>,
+                    ]}
+                    width={600}
+                >
+                    {loadingLessonDetails ? (
+                        <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <Spin size="large" />
+                            <p>Loading lesson details...</p>
+                        </div>
+                    ) : fetchedLessonDetails && currentCourseLessonContext ? (
+                        <Descriptions bordered column={1} size="small">
+                            {/* Lesson Specific Details - from fetchedLessonDetails.lesson */}
+                            <Descriptions.Item label="ID (Bài học)">{fetchedLessonDetails.lesson?.id || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Tên bài học">{fetchedLessonDetails.lesson?.title || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Mô tả (Nội dung)">{fetchedLessonDetails.lesson?.content || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Video URL">
+                                {fetchedLessonDetails.lesson?.videoUrl ? 
+                                    <a href={fetchedLessonDetails.lesson.videoUrl} target="_blank" rel="noopener noreferrer">{fetchedLessonDetails.lesson.videoUrl}</a> 
+                                    : 'N/A'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tài liệu đính kèm">
+                                {fetchedLessonDetails.lesson?.attachmentUrl ? 
+                                    <a href={fetchedLessonDetails.lesson.attachmentUrl} target="_blank" rel="noopener noreferrer">{fetchedLessonDetails.lesson.attachmentUrl}</a> 
+                                    : 'N/A'}
+                            </Descriptions.Item>
+                            
+                            {/* Course-Context Specific Details - from fetchedLessonDetails directly */}
+                            <Descriptions.Item label="Thứ tự trong khóa học">
+                                {fetchedLessonDetails.orderIndex === null || fetchedLessonDetails.orderIndex === undefined 
+                                    ? 'N/A' 
+                                    : fetchedLessonDetails.orderIndex}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Hiển thị trong khóa học">
+                                <Tag color={fetchedLessonDetails.isVisible === null || fetchedLessonDetails.isVisible ? 'green' : 'red'}>
+                                    {fetchedLessonDetails.isVisible === null || fetchedLessonDetails.isVisible ? 'Hiển thị' : 'Ẩn'}
+                                </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="ID Bài học tiên quyết (CourseLessonID)">
+                                {fetchedLessonDetails.prerequisiteCourseLessonId || 'Không có'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tên Bài học tiên quyết">
+                                {fetchedLessonDetails.prerequisiteLessonTitle || 'Không có'}
+                            </Descriptions.Item>
+
+                            {/* Lesson Metadata - from fetchedLessonDetails.lesson */}
+                            <Descriptions.Item label="Ngày tạo (Bài học)">{fetchedLessonDetails.lesson?.createdAt ? new Date(fetchedLessonDetails.lesson.createdAt).toLocaleString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Cập nhật lần cuối (Bài học)">{fetchedLessonDetails.lesson?.updatedAt ? new Date(fetchedLessonDetails.lesson.updatedAt).toLocaleString('vi-VN') : 'N/A'}</Descriptions.Item>
+                            {fetchedLessonDetails.lesson?.createdBy && (
+                                <>
+                                    <Descriptions.Item label="Người tạo (Username)">{fetchedLessonDetails.lesson.createdBy.username || 'N/A'}</Descriptions.Item>
+                                    <Descriptions.Item label="Người tạo (Tên)">{`${fetchedLessonDetails.lesson.createdBy.lastName || ''} ${fetchedLessonDetails.lesson.createdBy.firstName || ''}`.trim() || 'N/A'}</Descriptions.Item>
+                                    <Descriptions.Item label="Người tạo (Email)">{fetchedLessonDetails.lesson.createdBy.email || 'N/A'}</Descriptions.Item>
+                                </>
+                            )}
+                        </Descriptions>
+                    ) : (
+                        <>
+                            <p>Lesson details could not be loaded or are not available.</p>
+                            <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+                                <p>Debug Info:</p>
+                                <p>Loading: {loadingLessonDetails ? 'true' : 'false'}</p>
+                                <p>fetchedLessonDetails: {fetchedLessonDetails ? 'exists' : 'null/undefined'}</p>
+                                <p>currentCourseLessonContext: {currentCourseLessonContext ? 'exists' : 'null/undefined'}</p>
+                            </div>
+                        </>
+                    )}
                 </Modal>
             </Content>
         </Layout>

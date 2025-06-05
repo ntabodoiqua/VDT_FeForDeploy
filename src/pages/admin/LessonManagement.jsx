@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, message, Descriptions } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, Select, message, Descriptions, Spin } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
-import { fetchAllSystemLessonsApi } from '../../util/api'; // Import the shared API function
+import { fetchAllSystemLessonsApi, fetchLessonByIdApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -20,6 +20,7 @@ const LessonManagement = () => {
     });
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedLessonDetails, setSelectedLessonDetails] = useState(null);
+    const [loadingViewDetails, setLoadingViewDetails] = useState(false);
 
     const columns = [
         {
@@ -154,9 +155,29 @@ const LessonManagement = () => {
         fetchCourses();
     }, []);
 
-    const handleViewDetails = (lesson) => {
-        setSelectedLessonDetails(lesson);
+    const handleViewDetails = async (lessonSummary) => {
         setViewModalVisible(true);
+        setLoadingViewDetails(true);
+        setSelectedLessonDetails(null);
+        try {
+            const apiResponse = await fetchLessonByIdApi(lessonSummary.id);
+            if (apiResponse && apiResponse.code === 1000 && apiResponse.result) {
+                setSelectedLessonDetails(apiResponse.result);
+            } else {
+                message.error(apiResponse?.message || 'Không thể tải chi tiết bài học.');
+                setViewModalVisible(false);
+            }
+        } catch (error) {
+            console.error("Fetch lesson details error:", error);
+            let errorMessage = 'Lỗi khi tải chi tiết bài học.';
+            if (error.response?.data?.message) errorMessage = error.response.data.message;
+            else if (error.data?.message) errorMessage = error.data.message;
+            else if (error.message) errorMessage = error.message;
+            message.error(errorMessage);
+            setViewModalVisible(false);
+        } finally {
+            setLoadingViewDetails(false);
+        }
     };
 
     const handleEdit = (lesson) => {
@@ -301,44 +322,55 @@ const LessonManagement = () => {
                 </Form>
             </Modal>
 
-            {selectedLessonDetails && (
+            {viewModalVisible && (
                 <Modal
                     title="Chi tiết bài học"
                     open={viewModalVisible}
                     onCancel={() => {
                         setViewModalVisible(false);
                         setSelectedLessonDetails(null);
+                        setLoadingViewDetails(false);
                     }}
                     footer={[
                         <Button key="close" onClick={() => {
                             setViewModalVisible(false);
                             setSelectedLessonDetails(null);
+                            setLoadingViewDetails(false);
                         }}>
                             Đóng
                         </Button>,
                     ]}
                     width={800}
                 >
-                    <Descriptions bordered column={1} size="small">
-                        <Descriptions.Item label="ID">{selectedLessonDetails.id}</Descriptions.Item>
-                        <Descriptions.Item label="Tên bài học">{selectedLessonDetails.title}</Descriptions.Item>
-                        <Descriptions.Item label="Nội dung">{selectedLessonDetails.content}</Descriptions.Item>
-                        <Descriptions.Item label="Video URL">
-                            {selectedLessonDetails.videoUrl ? <a href={selectedLessonDetails.videoUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.videoUrl}</a> : 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Tài liệu đính kèm">
-                            {selectedLessonDetails.attachmentUrl ? <a href={selectedLessonDetails.attachmentUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.attachmentUrl}</a> : 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Ngày tạo">{new Date(selectedLessonDetails.createdAt).toLocaleString()}</Descriptions.Item>
-                        <Descriptions.Item label="Cập nhật lần cuối">{new Date(selectedLessonDetails.updatedAt).toLocaleString()}</Descriptions.Item>
-                        {selectedLessonDetails.createdBy && (
-                            <>
-                                <Descriptions.Item label="Người tạo (Username)">{selectedLessonDetails.createdBy.username}</Descriptions.Item>
-                                <Descriptions.Item label="Người tạo (Tên)">{`${selectedLessonDetails.createdBy.lastName || ''} ${selectedLessonDetails.createdBy.firstName || ''}`.trim()}</Descriptions.Item>
-                                <Descriptions.Item label="Người tạo (Email)">{selectedLessonDetails.createdBy.email || 'N/A'}</Descriptions.Item>
-                            </>
-                        )}
-                    </Descriptions>
+                    {loadingViewDetails ? (
+                        <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <Spin size="large" />
+                            <p>Đang tải chi tiết bài học...</p>
+                        </div>
+                    ) : selectedLessonDetails ? (
+                        <Descriptions bordered column={1} size="small">
+                            <Descriptions.Item label="ID">{selectedLessonDetails.id}</Descriptions.Item>
+                            <Descriptions.Item label="Tên bài học">{selectedLessonDetails.title}</Descriptions.Item>
+                            <Descriptions.Item label="Mô tả (Nội dung)">{selectedLessonDetails.content || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Video URL">
+                                {selectedLessonDetails.videoUrl ? <a href={selectedLessonDetails.videoUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.videoUrl}</a> : 'N/A'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tài liệu đính kèm">
+                                {selectedLessonDetails.attachmentUrl ? <a href={selectedLessonDetails.attachmentUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.attachmentUrl}</a> : 'N/A'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Ngày tạo">{selectedLessonDetails.createdAt ? new Date(selectedLessonDetails.createdAt).toLocaleString() : 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Cập nhật lần cuối">{selectedLessonDetails.updatedAt ? new Date(selectedLessonDetails.updatedAt).toLocaleString() : 'N/A'}</Descriptions.Item>
+                            {selectedLessonDetails.createdBy && (
+                                <>
+                                    <Descriptions.Item label="Người tạo (Username)">{selectedLessonDetails.createdBy.username}</Descriptions.Item>
+                                    <Descriptions.Item label="Người tạo (Tên)">{`${selectedLessonDetails.createdBy.lastName || ''} ${selectedLessonDetails.createdBy.firstName || ''}`.trim() || 'N/A'}</Descriptions.Item>
+                                    <Descriptions.Item label="Người tạo (Email)">{selectedLessonDetails.createdBy.email || 'N/A'}</Descriptions.Item>
+                                </>
+                            )}
+                        </Descriptions>
+                    ) : (
+                        <p>Không thể tải hoặc không tìm thấy chi tiết bài học.</p>
+                    )}
                 </Modal>
             )}
         </div>

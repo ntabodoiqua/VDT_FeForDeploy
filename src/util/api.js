@@ -112,6 +112,16 @@ const deleteCategoryApi = (categoryId) => {
     return axios.delete(`/lms/category/${categoryId}`);
 };
 
+// API to fetch a single lesson by its ID
+const fetchLessonByIdApi = (lessonId) => {
+    return axios.get(`/lms/lessons/${lessonId}`);
+};
+
+// Lấy thông tin chi tiết của một lesson cụ thể trong một khóa học
+const fetchCourseLessonDetailsApi = (courseId, courseLessonId) => {
+    return axios.get(`/lms/courses/${courseId}/lessons/${courseLessonId}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -135,5 +145,7 @@ export {
     fetchCategoryByIdApi,
     createCategoryApi,
     updateCategoryApi,
-    deleteCategoryApi
+    deleteCategoryApi,
+    fetchLessonByIdApi,
+    fetchCourseLessonDetailsApi,
 }
