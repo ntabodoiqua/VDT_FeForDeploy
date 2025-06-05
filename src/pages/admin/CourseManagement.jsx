@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, message, Image, Switch, Tooltip, Descriptions, Tag, Upload, DatePicker } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, message, Image, Switch, Tooltip, Descriptions, Tag, Upload, DatePicker, Row, Col, Card, Collapse } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
     fetchCoursesApi,
@@ -15,13 +15,16 @@ import {
 
 const { Option } = Select;
 const { TextArea } = Input;
+const { RangePicker } = DatePicker;
+const { Panel } = Collapse;
 
 const CourseManagement = () => {
     const [courses, setCourses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [form] = Form.useForm();
+    const [addEditForm] = Form.useForm();
+    const [filterForm] = Form.useForm();
     const [editingCourse, setEditingCourse] = useState(null);
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedCourseDetails, setSelectedCourseDetails] = useState(null);
@@ -30,6 +33,14 @@ const CourseManagement = () => {
         current: 1,
         pageSize: 10,
         total: 0,
+    });
+    const [filterValues, setFilterValues] = useState({
+        title: null,
+        instructorName: null,
+        category: null,
+        isActive: null,
+        createdDateRange: null,
+        startDateRange: null,
     });
 
     const getDisplayImageUrl = (urlPath) => {
@@ -139,16 +150,28 @@ const CourseManagement = () => {
         },
     ];
 
-    const fetchCourses = async (page = pagination.current, pageSize = pagination.pageSize) => {
+    const fetchCourses = async (page = 1, pageSize = pagination.pageSize, filtersToApply = filterValues) => {
         setLoading(true);
+        const params = {
+            page: page - 1,
+            size: pageSize,
+            title: filtersToApply.title || undefined,
+            instructorName: filtersToApply.instructorName || undefined,
+            category: filtersToApply.category || undefined, 
+            isActive: filtersToApply.isActive === null || filtersToApply.isActive === 'all' ? undefined : filtersToApply.isActive,
+            createdFrom: filtersToApply.createdDateRange?.[0] ? filtersToApply.createdDateRange[0].startOf('day').toISOString() : undefined,
+            createdTo: filtersToApply.createdDateRange?.[1] ? filtersToApply.createdDateRange[1].endOf('day').toISOString() : undefined,
+            startDateFrom: filtersToApply.startDateRange?.[0] ? filtersToApply.startDateRange[0].format('YYYY-MM-DD') : undefined,
+            startDateTo: filtersToApply.startDateRange?.[1] ? filtersToApply.startDateRange[1].format('YYYY-MM-DD') : undefined,
+        };
+
+        Object.keys(params).forEach(key => (params[key] === undefined || params[key] === '') && delete params[key]);
+        console.log("Fetching courses with params:", params);
 
         try {
-            const response = await fetchCoursesApi({ page: page - 1, size: pageSize });
-            console.log("Fetch courses raw response (axios):", response);
+            const response = await fetchCoursesApi(params);
             const data = response;
-            console.log("Fetch courses response data (axios):", data);
             if (data.code === 1000 && data.result) {
-                console.log("Sample course data structure:", data.result.content[0]);
                 setCourses(data.result.content);
                 setPagination({
                     current: data.result.pageable.pageNumber + 1,
@@ -159,17 +182,15 @@ const CourseManagement = () => {
                 message.error(data.message || 'Không thể tải danh sách khóa học');
             }
         } catch (error) {
-            console.error("Fetch courses error object:", error);
             message.error('Không thể tải danh sách khóa học: ' + error.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchCategories = async () => {
+    const fetchCategoriesList = async () => {
         try {
             const response = await fetchCategoriesApi({ page: 0, size: 1000 });
-            console.log("Fetch categories raw response:", response);
             const data = response;
             if (data.code === 1000 && data.result) {
                 setCategories(data.result.content);
@@ -177,14 +198,13 @@ const CourseManagement = () => {
                 message.error(data.message || 'Không thể tải danh sách danh mục');
             }
         } catch (error) {
-            console.error("Fetch categories error:", error);
             message.error('Không thể tải danh sách danh mục: ' + error.message);
         }
     };
 
     useEffect(() => {
-        fetchCourses();
-        fetchCategories();
+        fetchCourses(pagination.current, pagination.pageSize, filterValues);
+        fetchCategoriesList();
     }, []);
 
     const handleViewDetails = async (course) => {
@@ -243,7 +263,7 @@ const CourseManagement = () => {
     const handleTableChange = (newPageInfo) => {
         const { current, pageSize } = newPageInfo;
         const newPage = pagination.pageSize !== pageSize ? 1 : current;
-        fetchCourses(newPage, pageSize);
+        fetchCourses(newPage, pageSize, filterValues);
     };
 
     const normFile = (e) => {
@@ -266,7 +286,7 @@ const CourseManagement = () => {
             detailedDescription: course.detailedDescription || undefined,
             requiresApproval: course.requiresApproval,
         };
-        form.setFieldsValue(formData);
+        addEditForm.setFieldsValue(formData);
 
         if (course.thumbnailUrl) {
             setThumbnailFileList([{
@@ -302,7 +322,7 @@ const CourseManagement = () => {
                     console.log("Delete course response data (axios):", data);
                     if (data.code === 1000) {
                         message.success(data.message || 'Xóa khóa học thành công');
-                        fetchCourses(pagination.current, pagination.pageSize);
+                        fetchCourses(pagination.current, pagination.pageSize, filterValues);
                     } else {
                         message.error(data.message || 'Không thể xóa khóa học. Lỗi từ API.');
                     }
@@ -381,10 +401,10 @@ const CourseManagement = () => {
             if (data.code === 1000) {
                 message.success(data.message || (editingCourse ? 'Cập nhật khóa học thành công' : 'Tạo khóa học thành công'));
                 setModalVisible(false);
-                form.resetFields();
+                addEditForm.resetFields();
                 setEditingCourse(null);
                 setThumbnailFileList([]);
-                fetchCourses(editingCourse ? pagination.current : 1, pagination.pageSize);
+                fetchCourses(editingCourse ? pagination.current : 1, pagination.pageSize, filterValues);
             } else {
                 message.error(data.message || 'Có lỗi xảy ra khi lưu khóa học.');
             }
@@ -398,6 +418,81 @@ const CourseManagement = () => {
         }
     };
 
+    const onApplyFilters = () => {
+        const currentFilterFormValues = filterForm.getFieldsValue();
+        setFilterValues(currentFilterFormValues);
+        fetchCourses(1, pagination.pageSize, currentFilterFormValues);
+    };
+
+    const onClearFilters = () => {
+        filterForm.resetFields();
+        const clearedFilters = {
+            title: null, instructorName: null, category: null, isActive: null,
+            createdDateRange: null, startDateRange: null,
+        };
+        setFilterValues(clearedFilters);
+        fetchCourses(1, pagination.pageSize, clearedFilters);
+    };
+
+    const renderFilterArea = () => (
+        <Card style={{ marginBottom: 16 }}>
+            <Form form={filterForm} layout="vertical" onFinish={onApplyFilters}>
+                <Row gutter={16}>
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                        <Form.Item name="title" label="Tên khóa học">
+                            <Input placeholder="Nhập tên khóa học" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                        <Form.Item name="instructorName" label="Tên giảng viên">
+                            <Input placeholder="Nhập tên giảng viên" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                        <Form.Item name="category" label="Danh mục">
+                            <Select placeholder="Chọn danh mục" allowClear>
+                                {categories.map(cat => (
+                                    <Option key={cat.id} value={cat.name}>{cat.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                        <Form.Item name="isActive" label="Trạng thái">
+                            <Select placeholder="Chọn trạng thái" allowClear>
+                                <Option value="all">Tất cả</Option>
+                                <Option value={true}>Đang mở</Option>
+                                <Option value={false}>Đã đóng</Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={12}>
+                        <Form.Item name="createdDateRange" label="Ngày tạo">
+                            <RangePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={12}>
+                        <Form.Item name="startDateRange" label="Ngày bắt đầu (khóa học)">
+                            <RangePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col span={24} style={{ textAlign: 'right' }}>
+                        <Space>
+                            <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                                Lọc
+                            </Button>
+                            <Button onClick={onClearFilters} icon={<ClearOutlined />}>
+                                Xóa bộ lọc
+                            </Button>
+                        </Space>
+                    </Col>
+                </Row>
+            </Form>
+        </Card>
+    );
+
     return (
         <div>
             <div style={{ marginBottom: 16 }}>
@@ -406,7 +501,7 @@ const CourseManagement = () => {
                     icon={<PlusOutlined />}
                     onClick={() => {
                         setEditingCourse(null);
-                        form.resetFields();
+                        addEditForm.resetFields();
                         setThumbnailFileList([]);
                         setModalVisible(true);
                     }}
@@ -414,6 +509,8 @@ const CourseManagement = () => {
                     Thêm khóa học
                 </Button>
             </div>
+
+            {renderFilterArea()}
 
             <Table
                 columns={columns}
@@ -433,7 +530,7 @@ const CourseManagement = () => {
                 open={modalVisible}
                 onCancel={() => {
                     setModalVisible(false);
-                    form.resetFields();
+                    addEditForm.resetFields();
                     setEditingCourse(null);
                     setThumbnailFileList([]);
                 }}
@@ -441,7 +538,7 @@ const CourseManagement = () => {
                 width={800}
             >
                 <Form
-                    form={form}
+                    form={addEditForm}
                     layout="vertical"
                     onFinish={handleSubmit}
                 >
@@ -561,7 +658,7 @@ const CourseManagement = () => {
                             </Button>
                             <Button onClick={() => {
                                 setModalVisible(false);
-                                form.resetFields();
+                                addEditForm.resetFields();
                                 setEditingCourse(null);
                                 setThumbnailFileList([]);
                             }}>
