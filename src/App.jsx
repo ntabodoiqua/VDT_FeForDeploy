@@ -12,6 +12,7 @@ import CourseManagement from './pages/admin/CourseManagement';
 import CategoryManagement from './pages/admin/CategoryManagement';
 import LessonManagement from './pages/admin/LessonManagement';
 import Statistics from './pages/admin/Statistics';
+import CourseLessonManagement from './pages/admin/CourseLessonManagement';
 import InstructorCourseManagement from './pages/instructor/CourseManagement';
 import InstructorLessonManagement from './pages/instructor/LessonManagement';
 import InstructorStatistics from './pages/instructor/Statistics';
@@ -42,6 +43,7 @@ function App() {
                     <Route path="course-categories" element={<CategoryManagement />} />
                     <Route path="lessons" element={<LessonManagement />} />
                     <Route path="statistics" element={<Statistics />} />
+                    <Route path="course-lesson-management" element={<CourseLessonManagement />} />
                 </Route>
 
                 {/* Protected routes for INSTRUCTOR */}

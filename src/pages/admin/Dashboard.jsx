@@ -7,7 +7,8 @@ import {
     FileTextOutlined,
     BarChartOutlined,
     LogoutOutlined,
-    AppstoreOutlined
+    AppstoreOutlined,
+    LinkOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -41,27 +42,40 @@ const AdminDashboard = () => {
             onClick: () => navigate('/admin/users')
         },
         {
-            key: 'courseManagementSubmenu',
-            icon: <BookOutlined />,
-            label: 'Quản lý khóa học',
+            key: 'newCourseLessonManagement',
+            icon: <AppstoreOutlined />,
+            label: 'Quản lý khóa học - bài học',
             children: [
                 {
-                    key: 'courses',
-                    label: 'Danh sách khóa học',
-                    onClick: () => navigate('/admin/courses'),
+                    key: 'newCourseManagementSubmenu',
+                    icon: <BookOutlined />,
+                    label: 'Quản lý khóa học',
+                    children: [
+                        {
+                            key: 'newCourses',
+                            label: 'Danh sách khóa học',
+                            onClick: () => navigate('/admin/courses'),
+                        },
+                        {
+                            key: 'newCourseCategories',
+                            label: 'Quản lý danh mục',
+                            onClick: () => navigate('/admin/course-categories'),
+                        }
+                    ]
                 },
                 {
-                    key: 'course-categories',
-                    label: 'Quản lý danh mục',
-                    onClick: () => navigate('/admin/course-categories'),
+                    key: 'newLessons',
+                    icon: <FileTextOutlined />,
+                    label: 'Quản lý bài học',
+                    onClick: () => navigate('/admin/lessons')
+                },
+                {
+                    key: 'courseLessonLinking',
+                    icon: <LinkOutlined />,
+                    label: 'Liên kết Khóa học - Bài học',
+                    onClick: () => navigate('/admin/course-lesson-management')
                 }
             ]
-        },
-        {
-            key: 'lessons',
-            icon: <FileTextOutlined />,
-            label: 'Quản lý bài học',
-            onClick: () => navigate('/admin/lessons')
         },
         {
             key: 'statistics',

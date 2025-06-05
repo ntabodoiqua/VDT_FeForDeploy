@@ -67,6 +67,28 @@ const toggleCourseStatusApi = (courseId, payload) => {
     return axios.patch(`/lms/courses/${courseId}/toggle-status`, payload);
 };
 
+// API to fetch lessons for a specific course
+const fetchLessonsForCourseApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/courses/${courseId}/lessons?${queryParams.toString()}`);
+};
+
+// API to add a lesson to a course
+const addLessonToCourseApi = (courseId, courseLessonRequest) => {
+    return axios.post(`/lms/courses/${courseId}/lessons`, courseLessonRequest);
+};
+
+// API to fetch all lessons in the system (for LessonManagement page and modals)
+const fetchAllSystemLessonsApi = (params) => {
+    const queryParams = new URLSearchParams(params); // params typically { page: 0, size: 10 }
+    return axios.get(`/lms/lessons?${queryParams.toString()}`);
+};
+
+// API to remove a lesson from a course
+const removeLessonFromCourseApi = (courseId, courseLessonId) => {
+    return axios.delete(`/lms/courses/${courseId}/lessons/${courseLessonId}`);
+};
+
 // Category Management API calls
 const fetchCategoriesApi = (params) => {
     const queryParams = new URLSearchParams(params);
@@ -104,6 +126,10 @@ export {
     updateCourseApi,
     deleteCourseApi,
     toggleCourseStatusApi,
+    fetchLessonsForCourseApi,
+    addLessonToCourseApi,
+    fetchAllSystemLessonsApi,
+    removeLessonFromCourseApi,
     // Category exports
     fetchCategoriesApi,
     fetchCategoryByIdApi,
