@@ -17,6 +17,7 @@ import InstructorStatistics from './pages/instructor/Statistics';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
+import MyAccount from './pages/student/MyAccount';
 
 function App() {
     const { auth } = useContext(AuthContext);
@@ -63,6 +64,7 @@ function App() {
                     <Route path="courses" element={<StudentCourses />} />
                     <Route path="available-courses" element={<StudentCourseList />} />
                     <Route path="learning/:courseId" element={<StudentCourseDetail />} />
+                    <Route path="my-account" element={<MyAccount />} />
                 </Route>
 
                 {/* Redirect root to appropriate dashboard based on role */}

@@ -5,7 +5,8 @@ import {
     BookOutlined,
     ReadOutlined,
     ShoppingCartOutlined,
-    LogoutOutlined
+    LogoutOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -48,6 +49,12 @@ const StudentDashboard = () => {
             onClick: () => navigate('/student/learning')
         },
         {
+            key: 'my-account',
+            icon: <UserOutlined />,
+            label: 'Tài khoản của tôi',
+            onClick: () => navigate('/student/my-account')
+        },
+        {
             key: 'logout',
             icon: <LogoutOutlined />,
             label: 'Đăng xuất',
@@ -57,6 +64,7 @@ const StudentDashboard = () => {
 
     const getSelectedKey = () => {
         const path = location.pathname.split('/')[2];
+        if (path === 'my-account') return 'my-account';
         return path || 'courses';
     };
 
