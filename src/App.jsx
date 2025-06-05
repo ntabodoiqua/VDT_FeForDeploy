@@ -9,6 +9,7 @@ import InstructorDashboard from './pages/instructor/Dashboard';
 import StudentDashboard from './pages/student/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
 import CourseManagement from './pages/admin/CourseManagement';
+import CategoryManagement from './pages/admin/CategoryManagement';
 import LessonManagement from './pages/admin/LessonManagement';
 import Statistics from './pages/admin/Statistics';
 import InstructorCourseManagement from './pages/instructor/CourseManagement';
@@ -38,6 +39,7 @@ function App() {
                     <Route index element={<Navigate to="users" replace />} />
                     <Route path="users" element={<UserManagement />} />
                     <Route path="courses" element={<CourseManagement />} />
+                    <Route path="course-categories" element={<CategoryManagement />} />
                     <Route path="lessons" element={<LessonManagement />} />
                     <Route path="statistics" element={<Statistics />} />
                 </Route>

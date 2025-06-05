@@ -6,7 +6,8 @@ import {
     BookOutlined,
     FileTextOutlined,
     BarChartOutlined,
-    LogoutOutlined
+    LogoutOutlined,
+    AppstoreOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -40,10 +41,21 @@ const AdminDashboard = () => {
             onClick: () => navigate('/admin/users')
         },
         {
-            key: 'courses',
+            key: 'courseManagementSubmenu',
             icon: <BookOutlined />,
             label: 'Quản lý khóa học',
-            onClick: () => navigate('/admin/courses')
+            children: [
+                {
+                    key: 'courses',
+                    label: 'Danh sách khóa học',
+                    onClick: () => navigate('/admin/courses'),
+                },
+                {
+                    key: 'course-categories',
+                    label: 'Quản lý danh mục',
+                    onClick: () => navigate('/admin/course-categories'),
+                }
+            ]
         },
         {
             key: 'lessons',
@@ -66,8 +78,9 @@ const AdminDashboard = () => {
     ];
 
     const getSelectedKey = () => {
-        const path = location.pathname.split('/')[2];
-        return path || 'users';
+        const pathSegments = location.pathname.split('/');
+        const path = pathSegments.length > 2 ? pathSegments[2] : 'users';
+        return path;
     };
 
     return (
