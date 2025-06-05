@@ -158,6 +158,10 @@ const rejectEnrollmentApi = (enrollmentId) => {
     return axios.put(`/lms/enrollments/${enrollmentId}/reject`);
 };
 
+const fetchEnrollmentProgressApi = (enrollmentId) => {
+    return axios.get(`/lms/enrollments/${enrollmentId}/progress`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -193,4 +197,5 @@ export {
     fetchApprovedEnrollmentsApi,
     approveEnrollmentApi,
     rejectEnrollmentApi,
+    fetchEnrollmentProgressApi,
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { List, Avatar, Button, Progress, Typography, Divider, Card, Select, Spin, Alert, Row, Col, message } from 'antd';
-import { fetchCoursesApi, fetchPendingEnrollmentsApi, fetchApprovedEnrollmentsApi, approveEnrollmentApi, rejectEnrollmentApi } from '../../util/api';
+import { List, Avatar, Button, Progress, Typography, Divider, Card, Select, Spin, Alert, Row, Col, message, Modal, Tag } from 'antd';
+import { fetchCoursesApi, fetchPendingEnrollmentsApi, fetchApprovedEnrollmentsApi, approveEnrollmentApi, rejectEnrollmentApi, fetchEnrollmentProgressApi, fetchLessonsForCourseApi, fetchLessonByIdApi } from '../../util/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -27,6 +27,13 @@ const EnrollmentManagement = () => {
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    // State for progress modal
+    const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState(null);
+    const [courseLessons, setCourseLessons] = useState([]);
+    const [studentProgress, setStudentProgress] = useState([]);
+    const [progressLoading, setProgressLoading] = useState(false);
 
     useEffect(() => {
         const getCourses = async () => {
@@ -107,6 +114,56 @@ const EnrollmentManagement = () => {
         setSelectedCourseId(courseId);
         setApprovedPagination({ current: 1, pageSize: 10, total: 0 });
         setPendingPagination({ current: 1, pageSize: 10, total: 0 });
+    };
+
+    const handleViewProgress = async (enrollment) => {
+        if (!enrollment || !enrollment.student) return;
+
+        setSelectedStudent(enrollment.student);
+        setIsProgressModalVisible(true);
+        setProgressLoading(true);
+
+        try {
+            const [lessonsRes, progressRes] = await Promise.all([
+                fetchLessonsForCourseApi(selectedCourseId, { page: 0, size: 1000 }), // Assuming max 1000 lessons
+                fetchEnrollmentProgressApi(enrollment.id)
+            ]);
+
+            if (progressRes?.result) {
+                setStudentProgress(progressRes.result);
+            } else {
+                setStudentProgress([]);
+            }
+
+            let lessonsWithDetails = [];
+            if (lessonsRes?.result?.content) {
+                lessonsWithDetails = await Promise.all(
+                    lessonsRes.result.content.map(async (courseLesson) => {
+                        if (courseLesson.lesson && courseLesson.lesson.id) {
+                            try {
+                                const lessonDetailsRes = await fetchLessonByIdApi(courseLesson.lesson.id);
+                                if (lessonDetailsRes?.result) {
+                                    // Replace the partial lesson object with the full one
+                                    return { ...courseLesson, lesson: lessonDetailsRes.result };
+                                }
+                            } catch (e) {
+                                console.error(`Failed to fetch details for lesson ${courseLesson.lesson.id}`, e);
+                            }
+                        }
+                        return courseLesson; // Return original if fetch fails or no id
+                    })
+                );
+            }
+            setCourseLessons(lessonsWithDetails);
+
+        } catch (err) {
+            console.error(err);
+            message.error("Không thể tải tiến độ của học viên.");
+            setCourseLessons([]);
+            setStudentProgress([]);
+        } finally {
+            setProgressLoading(false);
+        }
     };
 
     const handleAction = async (action, enrollmentId, studentName) => {
@@ -192,7 +249,10 @@ const EnrollmentManagement = () => {
                                         }
                                     }}
                                     renderItem={item => (
-                                        <List.Item>
+                                        <List.Item
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => handleViewProgress(item)}
+                                        >
                                             <List.Item.Meta
                                                 avatar={<Avatar src={getFullImageUrl(item.student?.avatarUrl) || `https://i.pravatar.cc/150?u=${item.student?.id}`} />}
                                                 title={`${item.student?.firstName} ${item.student?.lastName}`}
@@ -259,6 +319,44 @@ const EnrollmentManagement = () => {
                     </Row>
                 </Card>
             )}
+            
+            <Modal
+                title={`Tiến độ học tập của ${selectedStudent?.firstName || ''} ${selectedStudent?.lastName || ''}`}
+                visible={isProgressModalVisible}
+                onCancel={() => setIsProgressModalVisible(false)}
+                footer={[
+                    <Button key="back" onClick={() => setIsProgressModalVisible(false)}>
+                        Đóng
+                    </Button>,
+                ]}
+                width={800}
+            >
+                {progressLoading ? (
+                    <Spin tip="Đang tải tiến độ..." />
+                ) : (
+                    <List
+                        dataSource={courseLessons}
+                        renderItem={lessonItem => {
+                            const lessonDetail = lessonItem.lesson || {};
+                            const progress = studentProgress.find(p => p.lessonId === lessonDetail.id);
+                            const isCompleted = progress?.completed || false;
+                            const description = lessonDetail.content || 'Không có mô tả';
+                            const truncatedDescription = description.length > 150 ? `${description.substring(0, 150)}...` : description;
+                            return (
+                                <List.Item>
+                                    <List.Item.Meta
+                                        title={lessonDetail.title}
+                                        description={truncatedDescription}
+                                    />
+                                    <Tag color={isCompleted ? 'green' : 'red'}>
+                                        {isCompleted ? `Hoàn thành (${new Date(progress.completionDate).toLocaleDateString()})` : 'Chưa hoàn thành'}
+                                    </Tag>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
+            </Modal>
         </div>
     );
 };
