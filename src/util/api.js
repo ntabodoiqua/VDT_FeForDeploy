@@ -122,6 +122,11 @@ const fetchCourseLessonDetailsApi = (courseId, courseLessonId) => {
     return axios.get(`/lms/courses/${courseId}/lessons/${courseLessonId}`);
 };
 
+// API to update a specific lesson within a course
+const updateCourseLessonApi = (courseId, courseLessonId, data) => {
+    return axios.patch(`/lms/courses/${courseId}/lessons/${courseLessonId}`, data);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -148,4 +153,5 @@ export {
     deleteCategoryApi,
     fetchLessonByIdApi,
     fetchCourseLessonDetailsApi,
+    updateCourseLessonApi,
 }

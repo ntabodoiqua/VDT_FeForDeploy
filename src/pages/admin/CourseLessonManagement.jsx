@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination, Descriptions, Tag, Spin, Image, InputNumber, Switch } from 'antd';
-import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined } from '@ant-design/icons';
-import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi, fetchCourseByIdApi, fetchLessonByIdApi, fetchCourseLessonDetailsApi } from '../../util/api';
+import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
+import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi, fetchCourseByIdApi, fetchLessonByIdApi, fetchCourseLessonDetailsApi, updateCourseLessonApi } from '../../util/api';
 
 const { Title } = Typography;
 const { Content } = Layout;
@@ -48,6 +48,12 @@ const CourseLessonManagement = () => {
     const [currentCourseLessonContext, setCurrentCourseLessonContext] = useState(null);
     const [fetchedLessonDetails, setFetchedLessonDetails] = useState(null);
     const [loadingLessonDetails, setLoadingLessonDetails] = useState(false);
+
+    // State for Edit Lesson Modal
+    const [isEditLessonModalVisible, setIsEditLessonModalVisible] = useState(false);
+    const [editingCourseLesson, setEditingCourseLesson] = useState(null);
+    const [editLessonFormValues, setEditLessonFormValues] = useState({ orderIndex: null, isVisible: true, prerequisiteCourseLessonId: null });
+    const [isSubmittingEditLesson, setIsSubmittingEditLesson] = useState(false);
 
     // Helper function to get displayable image URL
     const getDisplayImageUrl = (urlPath) => {
@@ -398,6 +404,57 @@ const CourseLessonManagement = () => {
         setLoadingLessonDetails(false);
     };
 
+    // Handlers for Edit Lesson Modal
+    const handleOpenEditLessonModal = (courseLesson) => {
+        setEditingCourseLesson(courseLesson);
+        setEditLessonFormValues({
+            orderIndex: courseLesson.orderIndex,
+            isVisible: courseLesson.isVisible !== null ? courseLesson.isVisible : true, // Default to true if null
+            prerequisiteCourseLessonId: courseLesson.prerequisiteCourseLessonId || null,
+        });
+        setIsEditLessonModalVisible(true);
+    };
+
+    const handleCloseEditLessonModal = () => {
+        setIsEditLessonModalVisible(false);
+        setEditingCourseLesson(null);
+        setEditLessonFormValues({ orderIndex: null, isVisible: true, prerequisiteCourseLessonId: null });
+    };
+
+    const handleUpdateCourseLesson = async () => {
+        if (!selectedCourse || !editingCourseLesson) {
+            message.error('No course selected or lesson to edit.');
+            return;
+        }
+        setIsSubmittingEditLesson(true);
+        try {
+            const payload = {
+                orderIndex: editLessonFormValues.orderIndex === '' || editLessonFormValues.orderIndex === null ? null : Number(editLessonFormValues.orderIndex),
+                isVisible: editLessonFormValues.isVisible,
+                prerequisiteCourseLessonId: editLessonFormValues.prerequisiteCourseLessonId || null,
+            };
+
+            const apiResponse = await updateCourseLessonApi(selectedCourse.id, editingCourseLesson.id, payload);
+
+            if (apiResponse && apiResponse.code === 1000) {
+                message.success('Lesson details updated successfully!');
+                setIsEditLessonModalVisible(false);
+                setEditingCourseLesson(null);
+                // Refresh lesson list
+                setLessonListVersion(v => v + 1);
+            } else {
+                message.error(apiResponse?.message || 'Failed to update lesson details.');
+            }
+        } catch (error) {
+            let errorMessage = 'Error updating lesson details.';
+            if (error.response?.data?.message) errorMessage = error.response.data.message;
+            else if (error.data?.message) errorMessage = error.data.message;
+            else if (error.message) errorMessage = error.message;
+            message.error(errorMessage);
+        }
+        setIsSubmittingEditLesson(false);
+    };
+
     return (
         <Layout style={{ padding: '24px' }}>
             <Content>
@@ -472,6 +529,9 @@ const CourseLessonManagement = () => {
                                 renderItem={item => (
                                     <List.Item
                                         actions={[
+                                            <Tooltip title="Edit lesson details in course">
+                                                <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEditLessonModal(item)} />
+                                            </Tooltip>,
                                             <Tooltip title="View lesson details">
                                                 <Button type="text" icon={<InfoCircleOutlined />} onClick={() => handleOpenLessonDetailsModal(item)} />
                                             </Tooltip>,
@@ -780,6 +840,65 @@ const CourseLessonManagement = () => {
                         </>
                     )}
                 </Modal>
+
+                {/* Modal to Edit Lesson in Course */} 
+                {editingCourseLesson && (
+                    <Modal
+                        title={`Edit Lesson: ${editingCourseLesson.lesson.title}`}
+                        open={isEditLessonModalVisible}
+                        onOk={handleUpdateCourseLesson}
+                        onCancel={handleCloseEditLessonModal}
+                        confirmLoading={isSubmittingEditLesson}
+                        width={600}
+                    >
+                        <Space direction="vertical" style={{ width: '100%', marginTop: '20px' }}>
+                            <Row gutter={16} align="middle">
+                                <Col span={8}><Typography.Text strong>Order Index:</Typography.Text></Col>
+                                <Col span={16}>
+                                    <InputNumber
+                                        placeholder="Leave blank for no change or auto"
+                                        value={editLessonFormValues.orderIndex}
+                                        onChange={value => setEditLessonFormValues(prev => ({ ...prev, orderIndex: value }))}
+                                        style={{ width: '100%' }}
+                                        min={1}
+                                    />
+                                </Col>
+                            </Row>
+                            <Row gutter={16} align="middle">
+                                <Col span={8}><Typography.Text strong>Is Visible:</Typography.Text></Col>
+                                <Col span={16}>
+                                    <Switch
+                                        checked={editLessonFormValues.isVisible}
+                                        onChange={checked => setEditLessonFormValues(prev => ({ ...prev, isVisible: checked }))}
+                                        checkedChildren="Visible"
+                                        unCheckedChildren="Hidden"
+                                    />
+                                </Col>
+                            </Row>
+                            <Row gutter={16} align="middle">
+                                <Col span={8}><Typography.Text strong>Prerequisite Lesson:</Typography.Text></Col>
+                                <Col span={16}>
+                                    <Select
+                                        allowClear
+                                        placeholder="None (no prerequisite)"
+                                        value={editLessonFormValues.prerequisiteCourseLessonId}
+                                        onChange={value => setEditLessonFormValues(prev => ({ ...prev, prerequisiteCourseLessonId: value }))}
+                                        style={{ width: '100%' }}
+                                        options={[
+                                            { value: null, label: 'None (no prerequisite)' },
+                                            ...lessonsInCourse
+                                                .filter(cl => cl.id !== editingCourseLesson.id) // Exclude self
+                                                .map(cl => ({
+                                                    value: cl.id, // This is CourseLessonID
+                                                    label: `(Order: ${cl.orderIndex}) ${cl.lesson.title}`
+                                                }))
+                                        ]}
+                                    />
+                                </Col>
+                            </Row>
+                        </Space>
+                    </Modal>
+                )}
             </Content>
         </Layout>
     );

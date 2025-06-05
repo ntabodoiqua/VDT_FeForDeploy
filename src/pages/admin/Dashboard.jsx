@@ -8,11 +8,13 @@ import {
     BarChartOutlined,
     LogoutOutlined,
     AppstoreOutlined,
-    LinkOutlined
+    LinkOutlined,
+    SolutionOutlined,
+    MessageOutlined,
+    TeamOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
-
 
 import siteLogo from '../../assets/images/logo.png'; 
 
@@ -52,28 +54,47 @@ const AdminDashboard = () => {
                     label: 'Quản lý khóa học',
                     children: [
                         {
-                            key: 'newCourses',
+                            key: 'courses',
                             label: 'Danh sách khóa học',
                             onClick: () => navigate('/admin/courses'),
                         },
                         {
-                            key: 'newCourseCategories',
+                            key: 'course-categories',
                             label: 'Quản lý danh mục',
                             onClick: () => navigate('/admin/course-categories'),
                         }
                     ]
                 },
                 {
-                    key: 'newLessons',
+                    key: 'lessons',
                     icon: <FileTextOutlined />,
                     label: 'Quản lý bài học',
                     onClick: () => navigate('/admin/lessons')
                 },
                 {
-                    key: 'courseLessonLinking',
+                    key: 'course-lesson-management',
                     icon: <LinkOutlined />,
                     label: 'Liên kết Khóa học - Bài học',
                     onClick: () => navigate('/admin/course-lesson-management')
+                }
+            ]
+        },
+        {
+            key: 'studentEnrollmentReviewManagement',
+            icon: <TeamOutlined />,
+            label: 'Quản lý Ghi danh & Đánh giá',
+            children: [
+                {
+                    key: 'enrollments',
+                    icon: <SolutionOutlined />,
+                    label: 'Quản lý Enrollment',
+                    onClick: () => navigate('/admin/enrollments')
+                },
+                {
+                    key: 'reviews',
+                    icon: <MessageOutlined />,
+                    label: 'Quản lý Review',
+                    onClick: () => navigate('/admin/reviews')
                 }
             ]
         },
@@ -93,35 +114,52 @@ const AdminDashboard = () => {
 
     const getSelectedKey = () => {
         const pathSegments = location.pathname.split('/');
-        const path = pathSegments.length > 2 ? pathSegments[2] : 'users';
-        return path;
+        const mainPath = pathSegments[2] || 'users'; 
+        let selected = mainPath;
+        if (location.pathname.startsWith('/admin/courses')) selected = 'courses';
+        if (location.pathname.startsWith('/admin/course-categories')) selected = 'course-categories';
+        if (location.pathname.startsWith('/admin/lessons')) selected = 'lessons';
+        if (location.pathname.startsWith('/admin/course-lesson-management')) selected = 'course-lesson-management';
+        if (location.pathname.startsWith('/admin/enrollments')) selected = 'enrollments';
+        if (location.pathname.startsWith('/admin/reviews')) selected = 'reviews';
+        
+        return selected;
+    };
+
+    const getDefaultOpenKeys = () => {
+        const currentPath = location.pathname;
+        if (currentPath.includes('/admin/courses') || currentPath.includes('/admin/course-categories') || currentPath.includes('/admin/lessons') || currentPath.includes('/admin/course-lesson-management')) {
+            return ['newCourseLessonManagement', 'newCourseManagementSubmenu'];
+        }
+        if (currentPath.includes('/admin/enrollments') || currentPath.includes('/admin/reviews')) {
+            return ['studentEnrollmentReviewManagement'];
+        }
+        return [];
     };
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider width={250} theme="light">
-                {/* Logo Section */}
+            <Sider width={280} theme="light">
                 <div 
                     style={{
-                        height: '64px', // Adjust height to match Header or your preference
+                        height: '64px',
                         margin: '0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '16px',
-                        borderBottom: '1px solid #f0f0f0', // Optional: if you want a separator
-                        // background: 'rgba(0, 0, 0, 0.02)' // Optional: slight background tint
+                        borderBottom: '1px solid #f0f0f0',
                     }}
                 >
-                    {/* Use the imported siteLogo */}
                     {siteLogo ? 
-                        <img src={siteLogo} alt="Logo Trang Web" style={{ height: '40px', maxWidth: '180px' /* Adjust as needed */ }} /> : 
-                        <div style={{fontSize: '20px', fontWeight: 'bold', color: '#001529'}}>Logo</div> // Fallback if logo fails to load
+                        <img src={siteLogo} alt="Logo Trang Web" style={{ height: '40px', maxWidth: '100%' }} /> : 
+                        <div style={{fontSize: '20px', fontWeight: 'bold', color: '#001529'}}>Logo</div>
                     }
                 </div>
                 <Menu
                     mode="inline"
                     selectedKeys={[getSelectedKey()]}
+                    defaultOpenKeys={getDefaultOpenKeys()}
                     items={menuItems}
                     style={{ height: '100%', borderRight: 0 }}
                 />
