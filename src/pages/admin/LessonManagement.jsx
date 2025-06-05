@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, message, Descriptions, Spin } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
-import { fetchAllSystemLessonsApi, fetchLessonByIdApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
+import { fetchAllSystemLessonsApi, fetchLessonByIdApi, updateLessonApi, createLessonApi, deleteLessonApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
 
-const { Option } = Select;
 const { TextArea } = Input;
 
 const LessonManagement = () => {
     const [lessons, setLessons] = useState([]);
-    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [form] = Form.useForm();
@@ -109,50 +107,8 @@ const LessonManagement = () => {
         }
     };
 
-    const fetchCourses = async () => {
-        try {
-            // TODO: Implement API call to fetch courses
-            // const response = await fetchCoursesApi();
-            // setCourses(response.data);
-            const accessToken = localStorage.getItem('access_token');
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-            // Example of how you might fetch courses with token, though API endpoint is not specified for this yet
-            // const response = await fetch(`http://localhost:8080/lms/courses`, { // Assuming an endpoint
-            //     method: 'GET',
-            //     headers: headers,
-            // });
-            // if (!response.ok) throw new Error('Failed to fetch courses');
-            // const data = await response.json();
-            // if (data.code === 1000 && data.result) {
-            //     setCourses(data.result.content || data.result); // Adjust based on actual API response for courses
-            // } else {
-            //     message.error(data.message || 'Không thể tải danh sách khóa học');
-            // }
-
-            // Temporary mock data
-            setCourses([
-                {
-                    id: 1,
-                    name: 'Lập trình React cơ bản'
-                },
-                {
-                    id: 2,
-                    name: 'Lập trình Node.js nâng cao'
-                }
-            ]);
-        } catch (error) {
-            message.error('Không thể tải danh sách khóa học');
-        }
-    };
-
     useEffect(() => {
         fetchLessons(pagination.current, pagination.pageSize);
-        fetchCourses();
     }, []);
 
     const handleViewDetails = async (lessonSummary) => {
@@ -180,55 +136,91 @@ const LessonManagement = () => {
         }
     };
 
-    const handleEdit = (lesson) => {
+    const handleEdit = async (lesson) => {
         setEditingLesson(lesson);
-        form.setFieldsValue(lesson);
+        form.resetFields();
         setModalVisible(true);
+        try {
+            const apiResponse = await fetchLessonByIdApi(lesson.id);
+            if (apiResponse && apiResponse.code === 1000 && apiResponse.result) {
+                form.setFieldsValue(apiResponse.result);
+            } else {
+                message.error(apiResponse?.message || 'Không thể tải chi tiết bài học để chỉnh sửa.');
+                setModalVisible(false);
+            }
+        } catch (error) {
+            console.error("Fetch lesson details for edit error:", error);
+            message.error('Lỗi khi tải chi tiết bài học để chỉnh sửa.');
+            setModalVisible(false);
+        }
     };
 
-    const handleDelete = async (lesson) => {
-        try {
-            // TODO: Implement API call to delete lesson
-            const accessToken = localStorage.getItem('access_token');
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
+    const handleDelete = (lesson) => {
+        Modal.confirm({
+            title: 'Xác nhận xóa',
+            content: `Bạn có chắc muốn xóa bài học "${lesson.title}" không? Hành động này không thể hoàn tác.`,
+            okText: 'Xóa',
+            cancelText: 'Hủy',
+            okType: 'danger',
+            async onOk() {
+                try {
+                    const response = await deleteLessonApi(lesson.id);
+                    if (response && response.code === 1000) {
+                        message.success('Xóa bài học thành công');
+                        fetchLessons(pagination.current, pagination.pageSize);
+                    } else {
+                        message.error(response?.message || 'Không thể xóa bài học.');
+                    }
+                } catch (error) {
+                    console.error("Delete lesson error:", error);
+                    let errorMessage = 'Không thể xóa bài học.';
+                    if (error.response?.data?.message) {
+                        errorMessage = error.response.data.message;
+                    } else if (error.data?.message) {
+                        errorMessage = error.data.message;
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+                    message.error(errorMessage);
+                }
             }
-            // await deleteLessonApi(lesson.id, { headers }); // Pass headers to your API call
-            message.success('Xóa bài học thành công');
-            fetchLessons(pagination.current, pagination.pageSize);
-        } catch (error) {
-            message.error('Không thể xóa bài học');
-        }
+        });
     };
 
     const handleSubmit = async (values) => {
         try {
-            const accessToken = localStorage.getItem('access_token');
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-
             if (editingLesson) {
-                // TODO: Implement API call to update lesson
-                // await updateLessonApi(editingLesson.id, values, { headers }); // Pass headers
-                message.success('Cập nhật bài học thành công');
+                const response = await updateLessonApi(editingLesson.id, values);
+                if (response && response.code === 1000) {
+                    message.success('Cập nhật bài học thành công');
+                } else {
+                    message.error(response?.message || 'Không thể cập nhật bài học.');
+                    return;
+                }
             } else {
-                // TODO: Implement API call to create lesson
-                // await createLessonApi(values, { headers }); // Pass headers
-                message.success('Tạo bài học thành công');
+                const response = await createLessonApi(values);
+                if (response && response.code === 1000) {
+                    message.success('Tạo bài học thành công');
+                } else {
+                    message.error(response?.message || 'Không thể tạo bài học.');
+                    return;
+                }
             }
             setModalVisible(false);
             form.resetFields();
             setEditingLesson(null);
             fetchLessons(pagination.current, pagination.pageSize);
         } catch (error) {
-            message.error('Có lỗi xảy ra');
+            console.error("Submit error:", error);
+            let errorMessage = 'Có lỗi xảy ra';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.data?.message) {
+                errorMessage = error.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            message.error(errorMessage);
         }
     };
 
@@ -278,18 +270,6 @@ const LessonManagement = () => {
                     onFinish={handleSubmit}
                 >
                     <Form.Item
-                        name="courseId"
-                        label="Khóa học"
-                        rules={[{ required: true, message: 'Vui lòng chọn khóa học' }]}
-                    >
-                        <Select>
-                            {courses.map(course => (
-                                <Option key={course.id} value={course.id}>{course.name}</Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
                         name="title"
                         label="Tên bài học"
                         rules={[{ required: true, message: 'Vui lòng nhập tên bài học' }]}
@@ -303,6 +283,22 @@ const LessonManagement = () => {
                         rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}
                     >
                         <TextArea rows={4} />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="videoUrl"
+                        label="Video URL"
+                        rules={[{ type: 'url', message: 'URL không hợp lệ' }]}
+                    >
+                        <Input placeholder="https://example.com/video.mp4" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="attachmentUrl"
+                        label="URL tài liệu đính kèm"
+                        rules={[{ type: 'url', message: 'URL không hợp lệ' }]}
+                    >
+                        <Input placeholder="https://example.com/attachment.pdf" />
                     </Form.Item>
 
                     <Form.Item>

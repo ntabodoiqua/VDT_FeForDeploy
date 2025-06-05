@@ -17,6 +17,7 @@
   "dependencies": {
     "@ant-design/charts": "^2.3.0",
     "@ant-design/icons": "5.3.7",
+    "@hello-pangea/dnd": "^18.0.1",
     "antd": "^5.19.0",
     "axios": "1.7.2",
     "jwt-decode": "^4.0.0",

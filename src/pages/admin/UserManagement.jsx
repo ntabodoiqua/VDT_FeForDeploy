@@ -422,12 +422,6 @@ const UserManagement = () => {
             render: (_, record) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A'
         },
         {
-            title: 'Email',
-            dataIndex: 'email',
-            key: 'email',
-            render: (text) => text || 'N/A'
-        },
-        {
             title: 'Điện thoại',
             dataIndex: 'phone',
             key: 'phone',

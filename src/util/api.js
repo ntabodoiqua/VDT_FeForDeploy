@@ -127,6 +127,18 @@ const updateCourseLessonApi = (courseId, courseLessonId, data) => {
     return axios.patch(`/lms/courses/${courseId}/lessons/${courseLessonId}`, data);
 };
 
+const updateLessonApi = (lessonId, lessonData) => {
+    return axios.put(`/lms/lessons/${lessonId}`, lessonData);
+};
+
+const createLessonApi = (lessonData) => {
+    return axios.post('/lms/lessons', lessonData);
+}
+
+const deleteLessonApi = (lessonId) => {
+    return axios.delete(`/lms/lessons/${lessonId}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -154,4 +166,7 @@ export {
     fetchLessonByIdApi,
     fetchCourseLessonDetailsApi,
     updateCourseLessonApi,
+    updateLessonApi,
+    createLessonApi,
+    deleteLessonApi,
 }

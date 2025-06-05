@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination, Descriptions, Tag, Spin, Image, InputNumber, Switch } from 'antd';
-import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined, EditOutlined, DragOutlined } from '@ant-design/icons';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi, fetchCourseByIdApi, fetchLessonByIdApi, fetchCourseLessonDetailsApi, updateCourseLessonApi } from '../../util/api';
 
 const { Title } = Typography;
@@ -16,11 +17,6 @@ const CourseLessonManagement = () => {
     });
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [lessonsInCourse, setLessonsInCourse] = useState([]);
-    const [lessonPagination, setLessonPagination] = useState({
-        current: 1,
-        pageSize: 5,
-        total: 0,
-    });
     const [lessonListVersion, setLessonListVersion] = useState(0);
     
     const [allSystemLessons, setAllSystemLessons] = useState([]);
@@ -110,26 +106,23 @@ const CourseLessonManagement = () => {
     const loadLessonsForSelectedCourse = useCallback(async () => {
         if (!selectedCourse) return;
         setLoadingLessons(true);
+        setLessonsInCourse([]); // Clear previous lessons
         try {
+            // Fetch ALL lessons. We use a large size number. 
+            // A better approach might be a dedicated API endpoint or parameter.
             const params = {
-                page: lessonPagination.current - 1,
-                size: lessonPagination.pageSize,
+                page: 0,
+                size: 1000, // Assuming a course won't have more than 1000 lessons
                 sort: 'orderIndex,asc'
             };
             const apiResponse = await fetchLessonsForCourseApi(selectedCourse.id, params);
-            if (apiResponse && typeof apiResponse.code !== 'undefined') {
-                if (apiResponse.code === 1000) {
-                    setLessonsInCourse(apiResponse.result.content || []); 
-                    setLessonPagination(prev => ({
-                        ...prev,
-                        total: apiResponse.result.totalElements || 0,
-                        current: apiResponse.result.number !== undefined ? apiResponse.result.number + 1 : prev.current 
-                    }));
-                } else {
-                    message.error(apiResponse.message || `Failed to load lessons. API Error Code: ${apiResponse.code}`);
-                }
+            if (apiResponse && apiResponse.code === 1000) {
+                // Ensure the lessons are sorted by orderIndex, as this is crucial for dnd
+                const sortedLessons = (apiResponse.result.content || []).sort((a, b) => a.orderIndex - b.orderIndex);
+                setLessonsInCourse(sortedLessons);
             } else {
-                message.error('Failed to load lessons. Invalid response structure from server.');
+                message.error(apiResponse?.message || `Failed to load lessons. API Error Code: ${apiResponse?.code}`);
+                setLessonsInCourse([]);
             }
         } catch (err) {
             let errorMessage = 'Error fetching lessons.';
@@ -140,7 +133,7 @@ const CourseLessonManagement = () => {
             setLessonsInCourse([]);
         }
         setLoadingLessons(false);
-    }, [selectedCourse, lessonPagination.current, lessonPagination.pageSize, lessonListVersion]);
+    }, [selectedCourse, lessonListVersion]);
 
     // useEffect to call loadLessonsForSelectedCourse
     useEffect(() => {
@@ -148,7 +141,6 @@ const CourseLessonManagement = () => {
             loadLessonsForSelectedCourse();
         } else {
             setLessonsInCourse([]);
-            setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
         }
     }, [selectedCourse, loadLessonsForSelectedCourse, lessonListVersion]);
 
@@ -192,7 +184,6 @@ const CourseLessonManagement = () => {
 
     const handleCourseSelect = (course) => {
         setSelectedCourse(course);
-        setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
     };
 
     const showAddLessonModal = () => {
@@ -251,7 +242,6 @@ const CourseLessonManagement = () => {
             setLessonsToAdd([]); 
             setLessonConfigurations({}); 
             if (selectedCourse) {
-                setLessonPagination(prev => ({ ...prev, current: 1 })); 
                 setLessonListVersion(v => v + 1);
             }
         }
@@ -275,11 +265,6 @@ const CourseLessonManagement = () => {
                     if (apiResponse && apiResponse.code === 1000) {
                         message.success(apiResponse.result || 'Bài học đã được xóa khỏi khóa học thành công.');
                         // Refresh the list of lessons
-                        if (lessonsInCourse.length === 1 && lessonPagination.current > 1) {
-                            setLessonPagination(prev => ({ ...prev, current: prev.current - 1, total: prev.total -1 }));
-                        } else {
-                            setLessonPagination(prev => ({ ...prev, total: prev.total -1 }));
-                        }
                         setLessonListVersion(v => v + 1);
                     } else {
                         message.error(apiResponse?.message || 'Không thể xóa bài học khỏi khóa học.');
@@ -304,10 +289,6 @@ const CourseLessonManagement = () => {
         setCoursePagination(prev => ({ ...prev, current: page, pageSize }));
         setSelectedCourse(null);
         setLessonsInCourse([]);
-    };
-
-    const handleLessonPageChange = (page, pageSize) => {
-        setLessonPagination(prev => ({ ...prev, current: page, pageSize }));
     };
 
     const handleAllLessonsModalTableChange = (pagination) => {
@@ -455,14 +436,100 @@ const CourseLessonManagement = () => {
         setIsSubmittingEditLesson(false);
     };
 
+    // Handle drag and drop for lesson reordering
+    const handleDragEnd = async (result) => {
+        if (!result.destination || !selectedCourse) {
+            return;
+        }
+
+        const sourceIndex = result.source.index;
+        const destinationIndex = result.destination.index;
+
+        if (sourceIndex === destinationIndex) {
+            return;
+        }
+
+        // Create a new array with reordered items
+        const reorderedLessons = Array.from(lessonsInCourse);
+        const [movedLesson] = reorderedLessons.splice(sourceIndex, 1);
+        reorderedLessons.splice(destinationIndex, 0, movedLesson);
+
+        // Update local state immediately for better UX
+        setLessonsInCourse(reorderedLessons);
+
+        // Update orderIndex for all affected lessons
+        const updatePromises = reorderedLessons.map(async (lesson, index) => {
+            const newOrderIndex = index + 1; // Starting from 1
+            if (lesson.orderIndex !== newOrderIndex) {
+                try {
+                    const payload = {
+                        orderIndex: newOrderIndex,
+                        isVisible: lesson.isVisible,
+                        prerequisiteCourseLessonId: lesson.prerequisiteCourseLessonId || null,
+                    };
+                    
+                    const apiResponse = await updateCourseLessonApi(selectedCourse.id, lesson.id, payload);
+                    
+                    if (apiResponse && apiResponse.code === 1000) {
+                        return { success: true, lessonId: lesson.id, newOrder: newOrderIndex };
+                    } else {
+                        console.error(`Failed to update lesson ${lesson.id}:`, apiResponse?.message);
+                        return { success: false, lessonId: lesson.id, error: apiResponse?.message };
+                    }
+                } catch (error) {
+                    console.error(`Error updating lesson ${lesson.id}:`, error);
+                    return { success: false, lessonId: lesson.id, error: error.message };
+                }
+            }
+            return { success: true, lessonId: lesson.id, newOrder: newOrderIndex, skipped: true };
+        });
+
+        try {
+            const results = await Promise.all(updatePromises);
+            const failedUpdates = results.filter(r => !r.success);
+            
+            if (failedUpdates.length > 0) {
+                message.warning(`Cập nhật thứ tự thành công nhưng có ${failedUpdates.length} bài học gặp lỗi. Danh sách sẽ được làm mới.`);
+                // Refresh the list to get the correct order from server
+                setLessonListVersion(v => v + 1);
+            } else {
+                message.success('Cập nhật thứ tự bài học thành công!');
+                // Update local state with new order indices
+                const updatedLessons = reorderedLessons.map((lesson, index) => ({
+                    ...lesson,
+                    orderIndex: index + 1
+                }));
+                setLessonsInCourse(updatedLessons);
+            }
+        } catch (error) {
+            message.error('Có lỗi xảy ra khi cập nhật thứ tự bài học. Danh sách sẽ được làm mới.');
+            console.error('Error in batch update:', error);
+            // Revert local state and refresh from server
+            setLessonListVersion(v => v + 1);
+        }
+    };
+
     return (
         <Layout style={{ padding: '24px' }}>
+            <style jsx>{`
+                .drag-handle:active {
+                    cursor: grabbing !important;
+                }
+                
+                .lesson-item:hover .drag-handle {
+                    color: #1890ff !important;
+                }
+                
+                .dragging-item {
+                    transform: rotate(5deg);
+                }
+            `}</style>
             <Content>
-                <Title level={2} style={{ marginBottom: '24px' }}>Course - Lesson Linking Management</Title>
+                <Title level={2} style={{ marginBottom: '24px' }}>Quản lý bài học trong khóa học</Title>
                 <Row gutter={24}>
                     {/* Courses List Column */}
                     <Col xs={24} sm={24} md={8} lg={8} xl={8}>
-                        <Card title="Select a Course" bordered={false} style={{ marginBottom: '24px' }}>
+                        <Card title="Chọn khóa học" bordered={false} style={{ marginBottom: '24px' }}>
                             <List
                                 loading={loadingCourses}
                                 itemLayout="horizontal"
@@ -509,7 +576,14 @@ const CourseLessonManagement = () => {
                     {/* Lessons in Selected Course Column */}
                     <Col xs={24} sm={24} md={16} lg={16} xl={16}>
                         <Card 
-                            title={selectedCourse ? `Lessons in: ${selectedCourse.title}` : "Select a Course to see its Lessons"} 
+                            title={selectedCourse ? (
+                                <span>
+                                    Bài học trong khóa: {selectedCourse.title}
+                                    <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px', fontWeight: 'normal' }}>
+                                        (Kéo thả để sắp xếp thứ tự)
+                                    </span>
+                                </span>
+                            ) : "Chọn khóa học để xem bài học"} 
                             bordered={false}
                             extra={selectedCourse && (
                                 <Button 
@@ -517,53 +591,108 @@ const CourseLessonManagement = () => {
                                     icon={<PlusOutlined />} 
                                     onClick={showAddLessonModal}
                                 >
-                                    Add Lesson(s) to Course
+                                    Thêm bài học vào khóa học
                                 </Button>
                             )}
                         >
-                            <List
-                                loading={loadingLessons}
-                                itemLayout="horizontal"
-                                dataSource={lessonsInCourse}
-                                locale={{ emptyText: selectedCourse ? 'No lessons found in this course.' : 'Please select a course.' }}
-                                renderItem={item => (
-                                    <List.Item
-                                        actions={[
-                                            <Tooltip title="Edit lesson details in course">
-                                                <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEditLessonModal(item)} />
-                                            </Tooltip>,
-                                            <Tooltip title="View lesson details">
-                                                <Button type="text" icon={<InfoCircleOutlined />} onClick={() => handleOpenLessonDetailsModal(item)} />
-                                            </Tooltip>,
-                                            <Tooltip title="Remove lesson from course">
-                                                <Button 
-                                                    danger 
-                                                    type="text" 
-                                                    icon={<DeleteOutlined />} 
-                                                    onClick={() => handleRemoveLessonFromCourse(item.id, item.lesson.title)}
-                                                />
-                                            </Tooltip>
-                                        ]}
-                                        key={item.id}
-                                    >
-                                        <List.Item.Meta
-                                            title={item.lesson.title}
-                                            description={`Order: ${item.orderIndex}`}
-                                        />
-                                    </List.Item>
-                                )}
-                            />
-                            {!loadingLessons && selectedCourse && lessonsInCourse.length > 0 && (
-                                <Pagination
-                                    current={lessonPagination.current}
-                                    pageSize={lessonPagination.pageSize}
-                                    total={lessonPagination.total}
-                                    onChange={handleLessonPageChange}
-                                    style={{ marginTop: '16px', textAlign: 'right' }}
-                                    showSizeChanger
-                                    pageSizeOptions={['5', '10', '15', '20']}
-                                    showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
-                                />
+                            {loadingLessons ? (
+                                <div style={{ textAlign: 'center', padding: '20px' }}>
+                                    <Spin size="large" />
+                                    <p>Đang tải danh sách bài học...</p>
+                                </div>
+                            ) : selectedCourse && lessonsInCourse.length > 0 ? (
+                                <DragDropContext onDragEnd={handleDragEnd}>
+                                    <Droppable droppableId="lessons-list">
+                                        {(provided, snapshot) => (
+                                            <div
+                                                {...provided.droppableProps}
+                                                ref={provided.innerRef}
+                                                style={{
+                                                    backgroundColor: snapshot.isDraggingOver ? '#f0f8ff' : 'transparent',
+                                                    padding: '8px',
+                                                    borderRadius: '4px',
+                                                    transition: 'background-color 0.2s ease'
+                                                }}
+                                            >
+                                                {lessonsInCourse.map((item, index) => (
+                                                    <Draggable
+                                                        key={item.id}
+                                                        draggableId={item.id.toString()}
+                                                        index={index}
+                                                    >
+                                                        {(provided, snapshot) => (
+                                                            <div
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                style={{
+                                                                    userSelect: 'none',
+                                                                    padding: '12px',
+                                                                    margin: '0 0 8px 0',
+                                                                    backgroundColor: snapshot.isDragging ? '#e6f7ff' : '#fafafa',
+                                                                    border: `1px solid ${snapshot.isDragging ? '#1890ff' : '#d9d9d9'}`,
+                                                                    borderRadius: '6px',
+                                                                    boxShadow: snapshot.isDragging ? '0 4px 8px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.1)',
+                                                                    transition: 'all 0.2s ease',
+                                                                    ...provided.draggableProps.style,
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                                        <div
+                                                                            {...provided.dragHandleProps}
+                                                                            style={{
+                                                                                marginRight: '12px',
+                                                                                cursor: 'grab',
+                                                                                color: '#999',
+                                                                                fontSize: '16px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center'
+                                                                            }}
+                                                                        >
+                                                                            <DragOutlined />
+                                                                        </div>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                                                                                {item.lesson.title}
+                                                                            </div>
+                                                                            <div style={{ color: '#666', fontSize: '12px' }}>
+                                                                                Thứ tự: {item.orderIndex}
+                                                                                {item.isVisible === false && (
+                                                                                    <Tag color="red" style={{ marginLeft: '8px' }}>Ẩn</Tag>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                                        <Tooltip title="Chỉnh sửa bài học trong khóa học">
+                                                                            <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenEditLessonModal(item)} />
+                                                                        </Tooltip>
+                                                                        <Tooltip title="Xem chi tiết bài học">
+                                                                            <Button type="text" icon={<InfoCircleOutlined />} onClick={() => handleOpenLessonDetailsModal(item)} />
+                                                                        </Tooltip>
+                                                                        <Tooltip title="Xóa bài học khỏi khóa học">
+                                                                            <Button 
+                                                                                danger 
+                                                                                type="text" 
+                                                                                icon={<DeleteOutlined />} 
+                                                                                onClick={() => handleRemoveLessonFromCourse(item.id, item.lesson.title)}
+                                                                            />
+                                                                        </Tooltip>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                </DragDropContext>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                    {selectedCourse ? 'Không có bài học nào trong khóa học này.' : 'Vui lòng chọn một khóa học.'}
+                                </div>
                             )}
                         </Card>
                     </Col>
