@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination, Descriptions, Tag, Spin, Image } from 'antd';
+import { Layout, Card, Row, Col, List, Button, Select, Modal, Table, message, Typography, Space, Tooltip, Pagination, Descriptions, Tag, Spin, Image, InputNumber, Switch } from 'antd';
 import { PlusOutlined, DeleteOutlined, ReadOutlined, LinkOutlined, ExclamationCircleFilled, InfoCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { fetchCoursesApi, fetchLessonsForCourseApi, addLessonToCourseApi, fetchAllSystemLessonsApi, removeLessonFromCourseApi, fetchCourseByIdApi, fetchLessonByIdApi, fetchCourseLessonDetailsApi } from '../../util/api';
 
@@ -35,6 +35,8 @@ const CourseLessonManagement = () => {
     const [loadingLessons, setLoadingLessons] = useState(false);
     const [isAddLessonModalVisible, setIsAddLessonModalVisible] = useState(false);
     const [lessonsToAdd, setLessonsToAdd] = useState([]);
+    const [lessonConfigurations, setLessonConfigurations] = useState({});
+    const [isSubmittingAddLessons, setIsSubmittingAddLessons] = useState(false);
 
     // State for Course Details Modal
     const [isCourseDetailsModalVisible, setIsCourseDetailsModalVisible] = useState(false);
@@ -106,6 +108,7 @@ const CourseLessonManagement = () => {
             const params = {
                 page: lessonPagination.current - 1,
                 size: lessonPagination.pageSize,
+                sort: 'orderIndex,asc'
             };
             const apiResponse = await fetchLessonsForCourseApi(selectedCourse.id, params);
             if (apiResponse && typeof apiResponse.code !== 'undefined') {
@@ -193,51 +196,60 @@ const CourseLessonManagement = () => {
         }
         setAllLessonsModalPagination(prev => ({ ...prev, current: 1 })); 
         setLessonsToAdd([]);
+        setLessonConfigurations({});
         setIsAddLessonModalVisible(true);
     };
 
     const handleAddLessonsToCourse = async () => {
-        if (!selectedCourse || lessonsToAdd.length === 0) {
-            message.warning('No lessons selected or course not chosen.');
-            setIsAddLessonModalVisible(false);
+        if (!selectedCourse || Object.keys(lessonConfigurations).length === 0) {
+            message.warning('No lessons selected or configured, or course not chosen.');
             return;
         }
-        setLoadingLessons(true); 
+        setIsSubmittingAddLessons(true);
         let allAddedSuccessfully = true;
+        let processedCount = 0;
 
-        for (const lessonId of lessonsToAdd) {
+        const lessonsToProcess = Object.entries(lessonConfigurations);
+
+        for (const [lessonId, config] of lessonsToProcess) {
+            processedCount++;
             const requestPayload = {
                 lessonId: lessonId,
-                orderIndex: null, 
-                isVisible: true, 
-                prerequisiteCourseLessonId: null 
+                orderIndex: config.orderIndex,
+                isVisible: config.isVisible,
+                prerequisiteCourseLessonId: config.prerequisiteCourseLessonId,
             };
             try {
                 const apiResponse = await addLessonToCourseApi(selectedCourse.id, requestPayload);
                 if (!(apiResponse && apiResponse.code === 1000)) {
                     allAddedSuccessfully = false;
-                    message.error(apiResponse?.message || `Failed to add lesson (ID: ${lessonId}).`);
+                    message.error(apiResponse?.message || `Failed to add lesson "${config.title}".`);
                 }
             } catch (error) {
                 allAddedSuccessfully = false;
-                message.error(error.response?.data?.message || error.message || `Error adding lesson (ID: ${lessonId}).`);
+                const errorMsg = error.response?.data?.message || error.message || `Error adding lesson "${config.title}".`;
+                message.error(errorMsg);
             }
         }
 
-        if (allAddedSuccessfully) {
-            message.success(`${lessonsToAdd.length} lesson(s) processed successfully.`);
-        } else {
-            message.warning('Some lessons could not be added. Check previous error messages.');
+        if (processedCount > 0) {
+            if (allAddedSuccessfully) {
+                message.success(`${processedCount} lesson(s) processed successfully.`);
+            } else {
+                message.warning('Some lessons were not added or encountered errors. Please review messages.');
+            }
         }
         
-        if (selectedCourse) {
-            setLessonPagination(prev => ({ ...prev, current: 1, total: 0 }));
-            setLessonListVersion(v => v + 1);
+        if (processedCount > 0) {
+            setIsAddLessonModalVisible(false);
+            setLessonsToAdd([]); 
+            setLessonConfigurations({}); 
+            if (selectedCourse) {
+                setLessonPagination(prev => ({ ...prev, current: 1 })); 
+                setLessonListVersion(v => v + 1);
+            }
         }
-        
-        setIsAddLessonModalVisible(false);
-        setLessonsToAdd([]);
-        setLoadingLessons(false);
+        setIsSubmittingAddLessons(false);
     };
 
     const handleRemoveLessonFromCourse = async (courseLessonId, lessonTitle) => {
@@ -502,16 +514,38 @@ const CourseLessonManagement = () => {
                     title={`Add Lessons to: ${selectedCourse?.title || 'Course'}`}
                     open={isAddLessonModalVisible}
                     onOk={handleAddLessonsToCourse}
-                    onCancel={() => setIsAddLessonModalVisible(false)}
+                    onCancel={() => {
+                        setIsAddLessonModalVisible(false);
+                        setLessonsToAdd([]);
+                        setLessonConfigurations({});
+                    }}
                     width={800}
-                    confirmLoading={loadingLessons}
-                    bodyStyle={{ minHeight: '300px' }}
+                    confirmLoading={isSubmittingAddLessons}
+                    bodyStyle={{ minHeight: '300px', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}
                 >
                     <Table
                         rowSelection={{
                             type: 'checkbox',
-                            onChange: (selectedRowKeys) => {
+                            onChange: (selectedRowKeys, selectedRows) => {
                                 setLessonsToAdd(selectedRowKeys);
+
+                                const currentConfigs = { ...lessonConfigurations };
+                                const nextConfigs = {};
+            
+                                selectedRowKeys.forEach(key => {
+                                    if (currentConfigs[key]) {
+                                        nextConfigs[key] = currentConfigs[key];
+                                    } else {
+                                        const lesson = selectedRows.find(r => r.id === key) || allSystemLessons.find(l => l.id === key);
+                                        nextConfigs[key] = {
+                                            title: lesson ? lesson.title : 'Unknown Lesson',
+                                            orderIndex: null,
+                                            isVisible: true,
+                                            prerequisiteCourseLessonId: null,
+                                        };
+                                    }
+                                });
+                                setLessonConfigurations(nextConfigs);
                             },
                             selectedRowKeys: lessonsToAdd,
                             getCheckboxProps: (record) => ({
@@ -534,6 +568,78 @@ const CourseLessonManagement = () => {
                         onChange={handleAllLessonsModalTableChange}
                         scroll={{ y: 300 }}
                     />
+
+                    {Object.keys(lessonConfigurations).length > 0 && (
+                        <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #f0f0f0' }}>
+                            <Title level={5} style={{ marginBottom: '15px' }}>Configure Selected Lessons:</Title>
+                            <div style={{ maxHeight: 'calc(100vh - 550px)', overflowY: 'auto', paddingRight: '10px' }}>
+                                {Object.entries(lessonConfigurations).map(([lessonId, config]) => (
+                                    <Card key={lessonId} size="small" title={`Configure: ${config.title}`} style={{ marginBottom: 16 }}>
+                                        <Space direction="vertical" style={{ width: '100%' }}>
+                                            <Row gutter={16} align="middle">
+                                                <Col span={6}><Typography.Text strong>Order Index:</Typography.Text></Col>
+                                                <Col span={18}>
+                                                    <InputNumber
+                                                        placeholder="Auto (appends to end)"
+                                                        value={config.orderIndex}
+                                                        onChange={value => {
+                                                            setLessonConfigurations(prev => ({
+                                                                ...prev,
+                                                                [lessonId]: { ...prev[lessonId], orderIndex: value === '' || value === null ? null : Number(value) }
+                                                            }));
+                                                        }}
+                                                        style={{ width: '100%' }}
+                                                        min={1}
+                                                    />
+                                                </Col>
+                                            </Row>
+                                            <Row gutter={16} align="middle">
+                                                <Col span={6}><Typography.Text strong>Is Visible:</Typography.Text></Col>
+                                                <Col span={18}>
+                                                    <Switch
+                                                        checked={config.isVisible}
+                                                        onChange={checked => {
+                                                            setLessonConfigurations(prev => ({
+                                                                ...prev,
+                                                                [lessonId]: { ...prev[lessonId], isVisible: checked }
+                                                            }));
+                                                        }}
+                                                        checkedChildren="Visible"
+                                                        unCheckedChildren="Hidden"
+                                                    />
+                                                </Col>
+                                            </Row>
+                                            <Row gutter={16} align="middle">
+                                                <Col span={6}><Typography.Text strong>Prerequisite:</Typography.Text></Col>
+                                                <Col span={18}>
+                                                    <Select
+                                                        allowClear
+                                                        placeholder="None (no prerequisite)"
+                                                        value={config.prerequisiteCourseLessonId}
+                                                        onChange={value => {
+                                                            setLessonConfigurations(prev => ({
+                                                                ...prev,
+                                                                [lessonId]: { ...prev[lessonId], prerequisiteCourseLessonId: value }
+                                                            }));
+                                                        }}
+                                                        style={{ width: '100%' }}
+                                                        options={[
+                                                            { value: null, label: 'None' },
+                                                            ...lessonsInCourse
+                                                                .map(cl => ({
+                                                                    value: cl.id,
+                                                                    label: `(Order: ${cl.orderIndex}) ${cl.lesson.title}`
+                                                                }))
+                                                        ]}
+                                                    />
+                                                </Col>
+                                            </Row>
+                                        </Space>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </Modal>
 
                 {/* Modal to View Course Details */}
