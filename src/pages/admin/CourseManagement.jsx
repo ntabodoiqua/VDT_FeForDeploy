@@ -240,8 +240,10 @@ const CourseManagement = () => {
         }
     };
 
-    const handleTableChange = (newPagination) => {
-        fetchCourses(newPagination.current, newPagination.pageSize);
+    const handleTableChange = (newPageInfo) => {
+        const { current, pageSize } = newPageInfo;
+        const newPage = pagination.pageSize !== pageSize ? 1 : current;
+        fetchCourses(newPage, pageSize);
     };
 
     const normFile = (e) => {
@@ -418,7 +420,11 @@ const CourseManagement = () => {
                 dataSource={courses}
                 rowKey="id"
                 loading={loading}
-                pagination={pagination}
+                pagination={{
+                    ...pagination,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['5', '10', '15', '20'],
+                }}
                 onChange={handleTableChange}
             />
 
