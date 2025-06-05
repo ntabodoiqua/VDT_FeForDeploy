@@ -139,6 +139,25 @@ const deleteLessonApi = (lessonId) => {
     return axios.delete(`/lms/lessons/${lessonId}`);
 };
 
+// Enrollment Management API calls
+const fetchPendingEnrollmentsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/enrollments/pending/course/${courseId}?${queryParams.toString()}`);
+};
+
+const fetchApprovedEnrollmentsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/enrollments/approved/course/${courseId}?${queryParams.toString()}`);
+};
+
+const approveEnrollmentApi = (enrollmentId) => {
+    return axios.put(`/lms/enrollments/${enrollmentId}/approve`);
+};
+
+const rejectEnrollmentApi = (enrollmentId) => {
+    return axios.put(`/lms/enrollments/${enrollmentId}/reject`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -169,4 +188,9 @@ export {
     updateLessonApi,
     createLessonApi,
     deleteLessonApi,
+    // Enrollments
+    fetchPendingEnrollmentsApi,
+    fetchApprovedEnrollmentsApi,
+    approveEnrollmentApi,
+    rejectEnrollmentApi,
 }
