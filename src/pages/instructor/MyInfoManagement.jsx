@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Spin, Alert, Tag, Avatar, Typography, Button, Modal, Form, Input, DatePicker, notification, Upload } from 'antd';
+import { Card, Descriptions, Spin, Alert, Tag, Avatar, Typography, Button, Modal, Form, Input, DatePicker, notification, Upload, List, Image } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
-import { fetchMyInfoApi, updateMyInfoApi, updateAvatarApi } from '../../util/api';
+import { fetchMyInfoApi, updateMyInfoApi, updateAvatarApi, fetchAllImagesOfUserApi, setAvatarFromUploadedFileApi } from '../../util/api';
 import moment from 'moment';
 
 const { Title } = Typography;
@@ -11,7 +11,20 @@ const MyInfoManagement = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+    const [userImages, setUserImages] = useState([]);
+    const [imagesLoading, setImagesLoading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
     const [form] = Form.useForm();
+
+    const getAvatarUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        const baseUrl = import.meta.env.VITE_BACKEND_URL.endsWith('/lms')
+            ? import.meta.env.VITE_BACKEND_URL.replace('/lms', '')
+            : import.meta.env.VITE_BACKEND_URL;
+        return `${baseUrl}/lms${path}`;
+    };
 
     const fetchUserInfo = async () => {
         try {
@@ -103,6 +116,66 @@ const MyInfoManagement = () => {
         }
     };
 
+    const showImageModal = async () => {
+        setIsImageModalVisible(true);
+        setImagesLoading(true);
+        try {
+            const res = await fetchAllImagesOfUserApi();
+            if (res && res.result) {
+                setUserImages(res.result);
+            } else {
+                notification.error({
+                    message: 'Lỗi',
+                    description: 'Không thể tải danh sách ảnh.'
+                });
+            }
+        } catch (error) {
+            notification.error({
+                message: 'Lỗi',
+                description: 'Đã xảy ra lỗi khi tải danh sách ảnh.'
+            });
+        } finally {
+            setImagesLoading(false);
+        }
+    };
+
+    const handleImageModalCancel = () => {
+        setIsImageModalVisible(false);
+        setSelectedImage(null);
+    };
+
+    const handleSetAvatarFromFile = async () => {
+        if (!selectedImage) {
+            notification.warn({
+                message: 'Cảnh báo',
+                description: 'Vui lòng chọn một ảnh.'
+            });
+            return;
+        }
+        try {
+            const fileName = selectedImage.split('/').pop();
+            const res = await setAvatarFromUploadedFileApi(fileName);
+            if (res && res.code === 1000) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Ảnh đại diện đã được cập nhật.',
+                });
+                handleImageModalCancel();
+                fetchUserInfo();
+            } else {
+                notification.error({
+                    message: 'Lỗi',
+                    description: res.message || 'Không thể cập nhật ảnh đại diện.',
+                });
+            }
+        } catch (error) {
+            notification.error({
+                message: 'Lỗi',
+                description: 'Đã xảy ra lỗi khi cập nhật ảnh đại diện.',
+            });
+        }
+    };
+
     if (loading) {
         return <Spin tip="Đang tải..." style={{ display: 'block', textAlign: 'center', marginTop: '50px' }} />;
     }
@@ -114,15 +187,6 @@ const MyInfoManagement = () => {
     if (!userInfo) {
         return <Alert message="Thông báo" description="Không tìm thấy thông tin người dùng." type="info" showIcon />;
     }
-
-    const getAvatarUrl = (path) => {
-        if (!path) return null;
-        if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_BACKEND_URL.endsWith('/lms')
-            ? import.meta.env.VITE_BACKEND_URL.replace('/lms', '')
-            : import.meta.env.VITE_BACKEND_URL;
-        return `${baseUrl}/lms${path}`;
-    };
 
     return (
         <>
@@ -143,6 +207,7 @@ const MyInfoManagement = () => {
                             >
                                 <Button icon={<UploadOutlined />}>Tải lên ảnh mới</Button>
                             </Upload>
+                            <Button onClick={showImageModal}>Chọn từ ảnh đã tải lên</Button>
                         </div>
                     </Descriptions.Item>
                     <Descriptions.Item label="ID">{userInfo.id}</Descriptions.Item>
@@ -198,6 +263,42 @@ const MyInfoManagement = () => {
                         <Input.TextArea rows={4} />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title="Chọn ảnh đại diện"
+                visible={isImageModalVisible}
+                onCancel={handleImageModalCancel}
+                onOk={handleSetAvatarFromFile}
+                okText="Đặt làm ảnh đại diện"
+                cancelText="Hủy"
+                width={800}
+                okButtonProps={{ disabled: !selectedImage }}
+            >
+                <Spin spinning={imagesLoading}>
+                    <List
+                        grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4, xl: 4, xxl: 5 }}
+                        dataSource={userImages}
+                        renderItem={item => (
+                            <List.Item
+                                onClick={() => setSelectedImage(item)}
+                                style={{
+                                    cursor: 'pointer',
+                                    padding: '8px',
+                                    border: selectedImage === item ? '2px solid #1890ff' : '2px solid transparent',
+                                    borderRadius: '8px'
+                                }}
+                            >
+                                <Image
+                                    width="100%"
+                                    src={getAvatarUrl(item)}
+                                    preview={false}
+                                    style={{ objectFit: 'cover', height: '120px', borderRadius: '4px' }}
+                                />
+                            </List.Item>
+                        )}
+                    />
+                </Spin>
             </Modal>
         </>
     );

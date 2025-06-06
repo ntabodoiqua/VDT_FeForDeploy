@@ -221,6 +221,20 @@ const updateAvatarApi = (file) => {
     });
 };
 
+const changeMyPasswordApi = (data) => {
+    return axios.put('/lms/users/change-password', data);
+};
+
+const fetchAllImagesOfUserApi = () => {
+    return axios.get('/lms/files/all-images-of-user');
+};
+
+const setAvatarFromUploadedFileApi = (fileName) => {
+    return axios.post('/lms/users/avatar/from-file', null, {
+        params: { fileName }
+    });
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -268,5 +282,8 @@ export {
     refreshTokenApi,
     fetchMyInfoApi,
     updateMyInfoApi,
-    updateAvatarApi
+    updateAvatarApi,
+    changeMyPasswordApi,
+    fetchAllImagesOfUserApi,
+    setAvatarFromUploadedFileApi
 }
