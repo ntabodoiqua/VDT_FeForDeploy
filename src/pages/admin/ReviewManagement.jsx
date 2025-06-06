@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { List, Avatar, Button, Typography, Divider, Card, Select, Rate, Tag, Spin, Alert, message } from 'antd';
-import { fetchCoursesApi, fetchPendingReviewsApi, fetchApprovedReviewsApi, approveReviewApi, rejectReviewApi } from '../../util/api';
+import { List, Avatar, Button, Typography, Divider, Card, Select, Rate, Tag, Spin, Alert, message, Form, Row, Col, DatePicker } from 'antd';
+import { fetchCoursesApi, fetchPendingReviewsApi, fetchHandledReviewsApi, approveReviewApi, rejectReviewApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -17,16 +18,18 @@ const ReviewManagement = () => {
     const [selectedCourseId, setSelectedCourseId] = useState(null);
     const [courses, setCourses] = useState([]);
     const [courseInfo, setCourseInfo] = useState(null);
-    const [approvedReviews, setApprovedReviews] = useState([]);
+    const [handledReviews, setHandledReviews] = useState([]);
     const [pendingReviews, setPendingReviews] = useState([]);
     
-    const [approvedPagination, setApprovedPagination] = useState({ current: 1, pageSize: 5, total: 0 });
+    const [handledPagination, setHandledPagination] = useState({ current: 1, pageSize: 5, total: 0 });
     const [pendingPagination, setPendingPagination] = useState({ current: 1, pageSize: 5, total: 0 });
 
     const [coursesLoading, setCoursesLoading] = useState(false);
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [filters, setFilters] = useState({ isRejected: undefined, startDate: null, endDate: null });
+    const [form] = Form.useForm();
 
     useEffect(() => {
         const getCourses = async () => {
@@ -49,21 +52,30 @@ const ReviewManagement = () => {
         getCourses();
     }, []);
 
-    const fetchApprovedReviews = useCallback(async (page, pageSize) => {
+    const fetchHandledReviews = useCallback(async (page, pageSize, currentFilters) => {
         if (!selectedCourseId) return;
         setActionLoading(true);
         try {
-            const params = { page: page - 1, size: pageSize };
-            const response = await fetchApprovedReviewsApi(selectedCourseId, params);
+            const params = {
+                page: page - 1,
+                size: pageSize,
+                isRejected: currentFilters.isRejected,
+                startDate: currentFilters.startDate?.format('YYYY-MM-DD'),
+                endDate: currentFilters.endDate?.format('YYYY-MM-DD'),
+            };
+             // Clean up undefined/null params before sending
+             Object.keys(params).forEach(key => (params[key] === undefined || params[key] === null) && delete params[key]);
+
+            const response = await fetchHandledReviewsApi(selectedCourseId, params);
             if (response?.result) {
-                setApprovedReviews(response.result.content || []);
-                setApprovedPagination({ current: page, pageSize, total: response.result.totalElements || 0 });
+                setHandledReviews(response.result.content || []);
+                setHandledPagination({ current: page, pageSize, total: response.result.totalElements || 0 });
             } else {
-                setApprovedReviews([]);
-                setApprovedPagination({ current: page, pageSize, total: 0 });
+                setHandledReviews([]);
+                setHandledPagination({ current: page, pageSize, total: 0 });
             }
         } catch (err) {
-            setError('Không thể tải nhận xét đã duyệt.');
+            setError('Không thể tải nhận xét đã xử lý.');
             console.error(err);
         } finally {
             setActionLoading(false);
@@ -97,14 +109,19 @@ const ReviewManagement = () => {
             const courseDetails = courses.find(c => c.id === selectedCourseId);
             setCourseInfo(courseDetails);
             
+            // Reset filters and form when course changes
+            form.resetFields();
+            const initialFilters = { isRejected: undefined, startDate: null, endDate: null };
+            setFilters(initialFilters);
+
             Promise.all([
-                fetchApprovedReviews(1, 5),
+                fetchHandledReviews(1, 5, initialFilters),
                 fetchPendingReviews(1, 5)
             ]).finally(() => {
                 setDetailsLoading(false);
             });
         }
-    }, [selectedCourseId, courses, fetchApprovedReviews, fetchPendingReviews]);
+    }, [selectedCourseId, courses, fetchHandledReviews, fetchPendingReviews, form]);
 
 
     const handleCourseSelect = (courseId) => {
@@ -123,7 +140,7 @@ const ReviewManagement = () => {
             }
             // Refetch data for current pages
             await Promise.all([
-                fetchApprovedReviews(approvedPagination.current, approvedPagination.pageSize),
+                fetchHandledReviews(handledPagination.current, handledPagination.pageSize, filters),
                 fetchPendingReviews(pendingPagination.current, pendingPagination.pageSize)
             ]);
         } catch (err) {
@@ -132,6 +149,17 @@ const ReviewManagement = () => {
         } finally {
             setActionLoading(false);
         }
+    };
+
+    const handleFilterChange = () => {
+        const formValues = form.getFieldsValue();
+        const newFilters = {
+            isRejected: formValues.isRejected,
+            startDate: formValues.dateRange?.[0] || null,
+            endDate: formValues.dateRange?.[1] || null,
+        };
+        setFilters(newFilters);
+        fetchHandledReviews(1, handledPagination.pageSize, newFilters);
     };
 
     const renderReviewList = (reviewList, pagination, onPageChange, isPending = false) => {
@@ -220,8 +248,32 @@ const ReviewManagement = () => {
                     )}
                     <Divider />
 
-                    <Title level={4}>Nhận xét đã xử lý ({approvedPagination.total})</Title>
-                    {renderReviewList(approvedReviews, approvedPagination, (page, pageSize) => fetchApprovedReviews(page, pageSize))}
+                    <Title level={4}>Nhận xét đã xử lý ({handledPagination.total})</Title>
+                    <Card style={{ marginBottom: 20, background: '#fafafa' }}>
+                        <Form form={form} onFinish={handleFilterChange} layout="vertical">
+                            <Row gutter={16} align="bottom">
+                                <Col xs={24} sm={12} md={8}>
+                                    <Form.Item name="isRejected" label="Trạng thái nhận xét">
+                                        <Select placeholder="Tất cả trạng thái" allowClear>
+                                            <Option value="false">Đã duyệt</Option>
+                                            <Option value="true">Đã từ chối</Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12} md={10}>
+                                    <Form.Item name="dateRange" label="Khoảng ngày nhận xét">
+                                        <RangePicker style={{ width: '100%' }} />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={24} md={6}>
+                                    <Form.Item>
+                                        <Button type="primary" htmlType="submit" style={{ width: '100%' }}>Lọc</Button>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </Form>
+                    </Card>
+                    {renderReviewList(handledReviews, handledPagination, (page, pageSize) => fetchHandledReviews(page, pageSize, filters))}
 
                     <Divider />
                     <Title level={4}>Nhận xét chờ duyệt ({pendingPagination.total})</Title>

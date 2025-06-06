@@ -168,9 +168,10 @@ const fetchPendingReviewsApi = (courseId, params) => {
     return axios.get(`/lms/course-reviews/unapproved/${courseId}?${queryParams.toString()}`);
 };
 
-const fetchApprovedReviewsApi = (courseId, params) => {
+// Lấy danh sách đánh giá đã được xử lý cho admin
+const fetchHandledReviewsApi = (courseId, params) => {
     const queryParams = new URLSearchParams(params);
-    return axios.get(`/lms/course-reviews/approved/${courseId}?${queryParams.toString()}`);
+    return axios.get(`/lms/course-reviews/handled/${courseId}?${queryParams.toString()}`);
 };
 
 const approveReviewApi = (reviewId) => {
@@ -219,7 +220,7 @@ export {
     fetchEnrollmentProgressApi,
     // Reviews
     fetchPendingReviewsApi,
-    fetchApprovedReviewsApi,
+    fetchHandledReviewsApi,
     approveReviewApi,
     rejectReviewApi,
 }
