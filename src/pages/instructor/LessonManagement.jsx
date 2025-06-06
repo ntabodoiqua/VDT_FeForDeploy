@@ -72,6 +72,11 @@ const LessonManagement = () => {
             ellipsis: true,
         },
         {
+            title: 'Số khóa học',
+            dataIndex: 'courseCount',
+            key: 'courseCount',
+        },
+        {
             title: 'Ngày tạo',
             dataIndex: 'createdAt',
             key: 'createdAt',
@@ -445,6 +450,7 @@ const LessonManagement = () => {
                         <Descriptions bordered column={1} size="small">
                             <Descriptions.Item label="ID">{selectedLessonDetails.id}</Descriptions.Item>
                             <Descriptions.Item label="Tên bài học">{selectedLessonDetails.title}</Descriptions.Item>
+                            <Descriptions.Item label="Số khóa học chứa bài học">{selectedLessonDetails.courseCount}</Descriptions.Item>
                             <Descriptions.Item label="Mô tả (Nội dung)">{selectedLessonDetails.content || 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Video URL">
                                 {selectedLessonDetails.videoUrl ? <a href={selectedLessonDetails.videoUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.videoUrl}</a> : 'N/A'}
