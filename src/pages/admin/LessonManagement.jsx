@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { fetchAllSystemLessonsApi, fetchLessonByIdApi, updateLessonApi, createLessonApi, deleteLessonApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
 
@@ -79,27 +79,27 @@ const LessonManagement = () => {
             key: 'action',
             render: (_, record) => (
                 <Space size="middle">
-                    <Button
-                        type="dashed"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewDetails(record)}
-                    >
-                        Xem
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        Sửa
-                    </Button>
-                    <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDelete(record)}
-                    >
-                        Xóa
-                    </Button>
+                    <Tooltip title="Xem chi tiết">
+                        <Button
+                            type="dashed"
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewDetails(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Sửa bài học">
+                        <Button
+                            type="primary"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEdit(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xóa bài học">
+                        <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDelete(record)}
+                        />
+                    </Tooltip>
                 </Space>
             ),
         },
