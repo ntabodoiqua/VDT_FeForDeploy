@@ -7,7 +7,9 @@ import {
     BarChartOutlined,
     LogoutOutlined,
     AppstoreOutlined,
-    LinkOutlined
+    LinkOutlined,
+    SolutionOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -69,24 +71,71 @@ const InstructorDashboard = () => {
             ]
         },
         {
+            key: 'enrollment-review-management-group',
+            icon: <SolutionOutlined />,
+            label: 'Quản lý ghi danh & đánh giá',
+            children: [
+                {
+                    key: 'enrollments',
+                    label: 'Quản lý ghi danh',
+                    onClick: () => navigate('/instructor/enrollments'),
+                },
+                {
+                    key: 'reviews',
+                    label: 'Quản lý đánh giá',
+                    onClick: () => navigate('/instructor/reviews'),
+                }
+            ]
+        },
+        {
             key: 'statistics',
             icon: <BarChartOutlined />,
             label: 'Thống kê',
             onClick: () => navigate('/instructor/statistics')
         },
         {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: 'Đăng xuất',
-            onClick: handleLogout
+            key: 'account-management',
+            icon: <UserOutlined />,
+            label: 'Quản lý tài khoản',
+            children: [
+                {
+                    key: 'view-info',
+                    label: 'Xem thông tin',
+                    onClick: () => navigate('/instructor/account/view'),
+                },
+                {
+                    key: 'change-password',
+                    label: 'Đổi mật khẩu',
+                    onClick: () => navigate('/instructor/account/password'),
+                },
+                {
+                    key: 'logout',
+                    icon: <LogoutOutlined />,
+                    label: 'Đăng xuất',
+                    onClick: handleLogout,
+                    danger: true,
+                }
+            ]
         }
     ];
 
     const getSelectedKey = () => {
         const path = location.pathname.split('/')[2];
+        const subPath = location.pathname.split('/')[3];
+
+        if (path === 'courses') return 'courses';
         if (path === 'course-categories') return 'course-categories';
+        if (path === 'lessons') return 'lessons';
         if (path === 'course-lesson-management') return 'course-lesson-management';
-        return path || 'courses';
+        if (path === 'enrollments') return 'enrollments';
+        if (path === 'reviews') return 'reviews';
+        if (path === 'statistics') return 'statistics';
+        if (path === 'account') {
+            if (subPath === 'view') return 'view-info';
+            if (subPath === 'password') return 'change-password';
+        }
+        // Fallback or default key
+        return 'courses';
     };
 
     const getDefaultOpenKeys = () => {
@@ -96,6 +145,12 @@ const InstructorDashboard = () => {
         }
         if (currentPath.includes('/instructor/lessons') || currentPath.includes('/instructor/course-lesson-management')) {
             return ['course-lesson-management-group'];
+        }
+        if (currentPath.includes('/instructor/enrollments') || currentPath.includes('/instructor/reviews')) {
+            return ['enrollment-review-management-group'];
+        }
+        if (currentPath.includes('/instructor/account')) {
+            return ['account-management'];
         }
         return [];
     };

@@ -20,6 +20,8 @@ import InstructorLessonManagement from './pages/instructor/LessonManagement';
 import InstructorStatistics from './pages/instructor/Statistics';
 import InstructorCourseLessonManagement from './pages/instructor/CourseLessonManagement';
 import InstructorCategoryManagement from './pages/instructor/CategoryManagement';
+import InstructorEnrollmentManagement from './pages/instructor/EnrollmentManagement';
+import InstructorReviewManagement from './pages/instructor/ReviewManagement';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
@@ -64,6 +66,8 @@ function App() {
                     <Route path="lessons" element={<InstructorLessonManagement />} />
                     <Route path="statistics" element={<InstructorStatistics />} />
                     <Route path="course-lesson-management" element={<InstructorCourseLessonManagement />} />
+                    <Route path="enrollments" element={<InstructorEnrollmentManagement />} />
+                    <Route path="reviews" element={<InstructorReviewManagement />} />
                 </Route>
 
                 {/* Protected routes for STUDENT */}

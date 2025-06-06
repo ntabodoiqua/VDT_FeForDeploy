@@ -17,11 +17,17 @@ export const AuthProvider = ({ children }) => {
         if (token) {
             try {
                 const decoded = jwtDecode(token);
-                const role = decoded.scope.split(' ')[0];
+                
+                // Role priority
+                const roleHierarchy = ['ROLE_ADMIN', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT'];
+                const userRoles = decoded.scope.split(' ');
+                
+                const highestRole = roleHierarchy.find(role => userRoles.includes(role));
+
                 setAuth({
                     isAuthenticated: true,
                     username: decoded.sub,
-                    role: role,
+                    role: highestRole,
                     scope: decoded.scope
                 });
             } catch (error) {
