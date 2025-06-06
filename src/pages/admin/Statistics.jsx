@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Table, DatePicker } from 'antd';
-import { UserOutlined, BookOutlined, FileTextOutlined, DollarOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag } from 'antd';
+import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
+import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi } from '../../util/api';
+import { Link } from 'react-router-dom';
 
 const { RangePicker } = DatePicker;
 
@@ -10,19 +12,63 @@ const Statistics = () => {
         totalUsers: 0,
         totalCourses: 0,
         totalLessons: 0,
-        totalRevenue: 0
+        totalReviews: 0
     });
     const [recentEnrollments, setRecentEnrollments] = useState([]);
+    const [recentReviews, setRecentReviews] = useState([]);
 
-    const columns = [
+    const reviewColumns = [
         {
             title: 'Học viên',
-            dataIndex: 'studentName',
+            dataIndex: ['student', 'username'],
             key: 'studentName',
         },
         {
             title: 'Khóa học',
-            dataIndex: 'courseName',
+            dataIndex: ['course', 'title'],
+            key: 'courseName',
+            render: (text, record) => <Link to={`/admin/courses`}>{text}</Link>
+        },
+        {
+            title: 'Đánh giá',
+            dataIndex: 'rating',
+            key: 'rating',
+            render: (rating) => <Rate disabled defaultValue={rating} />
+        },
+        {
+            title: 'Bình luận',
+            dataIndex: 'comment',
+            key: 'comment',
+        },
+        {
+            title: 'Ngày',
+            dataIndex: 'reviewDate',
+            key: 'reviewDate',
+        },
+        {
+            title: 'Trạng thái',
+            key: 'status',
+            render: (text, record) => {
+                if (record.rejected) {
+                    return <Tag color="red">Bị từ chối</Tag>;
+                }
+                if (record.approved) {
+                    return <Tag color="green">Đã duyệt</Tag>;
+                }
+                return <Tag color="blue">Chờ duyệt</Tag>;
+            }
+        }
+    ];
+
+    const columns = [
+        {
+            title: 'Học viên',
+            dataIndex: ['student', 'username'],
+            key: 'studentName',
+        },
+        {
+            title: 'Khóa học',
+            dataIndex: ['course', 'title'],
             key: 'courseName',
         },
         {
@@ -31,46 +77,70 @@ const Statistics = () => {
             key: 'enrollmentDate',
         },
         {
-            title: 'Giá',
-            dataIndex: 'price',
-            key: 'price',
-            render: (price) => `${price.toLocaleString('vi-VN')} VNĐ`
+            title: 'Trạng thái',
+            dataIndex: 'approvalStatus',
+            key: 'approvalStatus',
+            render: (status) => {
+                let color;
+                if (status === 'REJECTED') {
+                    color = 'volcano';
+                } else if (status === 'APPROVED') {
+                    color = 'green';
+                } else {
+                    color = 'geekblue';
+                }
+                return <Tag color={color}>{status}</Tag>;
+            }
         }
     ];
 
     const fetchStatistics = async () => {
         setLoading(true);
         try {
-            // TODO: Implement API call to fetch statistics
-            // const response = await fetchStatisticsApi();
-            // setStatistics(response.data);
-            
-            // Temporary mock data
+            // Fetch all statistics concurrently
+            const [usersResponse, coursesResponse, lessonsResponse, reviewsResponse, enrollmentsResponse] = await Promise.all([
+                fetchUsersApi({ size: 1 }),
+                fetchCoursesApi({ size: 1 }),
+                fetchAllSystemLessonsApi({ size: 1 }),
+                fetchAllReviewsApi({ page: 0, size: 5, sort: 'reviewDate,desc' }),
+                fetchAllEnrollmentsApi({ page: 0, size: 5, sort: 'enrollmentDate,desc' })
+            ]);
+
+            const totalUsers = usersResponse?.result?.totalElements || 0;
+            const totalCourses = coursesResponse?.result?.totalElements || 0;
+            const totalLessons = lessonsResponse?.result?.totalElements || 0;
+            const totalReviews = reviewsResponse?.result?.totalElements || 0;
+            const recentReviewsData = reviewsResponse?.result?.content || [];
+            const recentEnrollmentsData = enrollmentsResponse?.result?.content || [];
+
+            if (usersResponse?.code !== 1000) {
+                message.error(usersResponse?.message || 'Không thể tải tổng số người dùng.');
+            }
+            if (coursesResponse?.code !== 1000) {
+                message.error(coursesResponse?.message || 'Không thể tải tổng số khóa học.');
+            }
+            if (lessonsResponse?.code !== 1000) {
+                message.error(lessonsResponse?.message || 'Không thể tải tổng số bài học.');
+            }
+            if (reviewsResponse?.code !== 1000) {
+                message.error(reviewsResponse?.message || 'Không thể tải dữ liệu đánh giá.');
+            }
+            if (enrollmentsResponse?.code !== 1000) {
+                message.error(enrollmentsResponse?.message || 'Không thể tải dữ liệu đăng ký.');
+            }
+
             setStatistics({
-                totalUsers: 150,
-                totalCourses: 25,
-                totalLessons: 300,
-                totalRevenue: 50000000
+                totalUsers,
+                totalCourses,
+                totalLessons,
+                totalReviews
             });
 
-            setRecentEnrollments([
-                {
-                    id: 1,
-                    studentName: 'Nguyễn Văn A',
-                    courseName: 'Lập trình React cơ bản',
-                    enrollmentDate: '2024-03-15',
-                    price: 1000000
-                },
-                {
-                    id: 2,
-                    studentName: 'Trần Thị B',
-                    courseName: 'Lập trình Node.js nâng cao',
-                    enrollmentDate: '2024-03-14',
-                    price: 2000000
-                }
-            ]);
+            setRecentReviews(recentReviewsData.map(r => ({ ...r, key: r.id })));
+            setRecentEnrollments(recentEnrollmentsData.map(e => ({ ...e, key: e.id })));
         } catch (error) {
             console.error('Error fetching statistics:', error);
+            message.error('Lỗi khi tải dữ liệu thống kê.');
         } finally {
             setLoading(false);
         }
@@ -127,12 +197,10 @@ const Statistics = () => {
                 <Col span={6}>
                     <Card>
                         <Statistic
-                            title="Tổng doanh thu"
-                            value={statistics.totalRevenue}
-                            prefix={<DollarOutlined />}
-                            suffix="VNĐ"
+                            title="Tổng số review"
+                            value={statistics.totalReviews}
+                            prefix={<StarOutlined />}
                             loading={loading}
-                            formatter={(value) => value.toLocaleString('vi-VN')}
                         />
                     </Card>
                 </Col>
@@ -145,7 +213,19 @@ const Statistics = () => {
                 <Table
                     columns={columns}
                     dataSource={recentEnrollments}
-                    rowKey="id"
+                    rowKey="key"
+                    loading={loading}
+                />
+            </Card>
+
+            <Card
+                title="Đánh giá gần đây"
+                style={{ marginTop: 16 }}
+            >
+                <Table
+                    columns={reviewColumns}
+                    dataSource={recentReviews}
+                    rowKey="key"
                     loading={loading}
                 />
             </Card>

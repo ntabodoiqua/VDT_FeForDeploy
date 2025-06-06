@@ -182,6 +182,16 @@ const rejectReviewApi = (reviewId) => {
     return axios.put(`/lms/course-reviews/reject/${reviewId}`);
 };
 
+const fetchAllReviewsApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/course-reviews/all-for-admin?${queryParams.toString()}`);
+}
+
+const fetchAllEnrollmentsApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/enrollments/all-for-admin?${queryParams.toString()}`);
+}
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -223,4 +233,6 @@ export {
     fetchHandledReviewsApi,
     approveReviewApi,
     rejectReviewApi,
+    fetchAllReviewsApi,
+    fetchAllEnrollmentsApi,
 }
