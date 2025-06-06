@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col } from 'antd';
+import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image } from 'antd';
 import { DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { fetchAllFilesOfUserApi, deleteFileApi } from '../../util/api';
 import moment from 'moment';
@@ -11,6 +11,8 @@ const { Option } = Select;
 const FileManagement = () => {
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewFile, setPreviewFile] = useState(null);
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -98,6 +100,32 @@ const FileManagement = () => {
             render: (text, record) => <a href={getFileUrl(record)} target="_blank" rel="noopener noreferrer">{text}</a>,
         },
         {
+            title: 'Xem trước',
+            key: 'preview',
+            align: 'center',
+            render: (text, record) => {
+                const fileType = record.contentType || '';
+                const fileUrl = getFileUrl(record);
+
+                if (fileType.startsWith('image/')) {
+                    return <Image width={80} src={fileUrl} alt={record.originalFileName} />;
+                }
+
+                if (fileType === 'application/pdf' || fileType.startsWith('video/')) {
+                    return (
+                        <Button onClick={() => {
+                            setPreviewFile(record);
+                            setPreviewVisible(true);
+                        }}>
+                            Xem
+                        </Button>
+                    );
+                }
+
+                return <Tag>Không có</Tag>;
+            },
+        },
+        {
             title: 'Loại nội dung',
             dataIndex: 'contentType',
             key: 'contentType',
@@ -174,6 +202,25 @@ const FileManagement = () => {
                 pagination={pagination}
                 onChange={handleTableChange}
             />
+            <Modal
+                open={previewVisible}
+                title={`Xem trước: ${previewFile?.originalFileName}`}
+                footer={null}
+                onCancel={() => {
+                    setPreviewVisible(false);
+                    setPreviewFile(null);
+                }}
+                width="80%"
+                destroyOnClose
+            >
+                {previewFile && (
+                    <iframe
+                        src={getFileUrl(previewFile)}
+                        style={{ width: '100%', height: '75vh', border: 'none' }}
+                        title={previewFile.originalFileName}
+                    ></iframe>
+                )}
+            </Modal>
         </div>
     );
 };
