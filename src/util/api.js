@@ -243,6 +243,52 @@ const deleteFileApi = (fileName) => {
     return axios.delete(`/lms/files/${fileName}`);
 };
 
+// Course Documents API calls
+const uploadCourseDocumentApi = (courseId, formData) => {
+    return axios.post(`/lms/courses/${courseId}/documents/upload`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+const fetchCourseDocumentsApi = (courseId) => {
+    return axios.get(`/lms/courses/${courseId}/documents`);
+};
+
+const deleteCourseDocumentApi = (courseId, documentId) => {
+    return axios.delete(`/lms/courses/${courseId}/documents/${documentId}`);
+};
+
+const downloadCourseDocumentApi = (courseId, documentId) => {
+    return axios.get(`/lms/courses/${courseId}/documents/${documentId}/download`, {
+        responseType: 'blob'
+    });
+};
+
+// Lesson Documents API calls
+const uploadLessonDocumentApi = (lessonId, formData) => {
+    return axios.post(`/lms/lessons/${lessonId}/documents/upload`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+const fetchLessonDocumentsApi = (lessonId) => {
+    return axios.get(`/lms/lessons/${lessonId}/documents`);
+};
+
+const deleteLessonDocumentApi = (lessonId, documentId) => {
+    return axios.delete(`/lms/lessons/${lessonId}/documents/${documentId}`);
+};
+
+const downloadLessonDocumentApi = (lessonId, documentId) => {
+    return axios.get(`/lms/lessons/${lessonId}/documents/${documentId}/download`, {
+        responseType: 'blob'
+    });
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -295,5 +341,15 @@ export {
     fetchAllImagesOfUserApi,
     setAvatarFromUploadedFileApi,
     fetchAllFilesOfUserApi,
-    deleteFileApi
+    deleteFileApi,
+    // Course Documents
+    uploadCourseDocumentApi,
+    fetchCourseDocumentsApi,
+    deleteCourseDocumentApi,
+    downloadCourseDocumentApi,
+    // Lesson Documents
+    uploadLessonDocumentApi,
+    fetchLessonDocumentsApi,
+    deleteLessonDocumentApi,
+    downloadLessonDocumentApi
 }
