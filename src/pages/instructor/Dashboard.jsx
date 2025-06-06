@@ -9,7 +9,8 @@ import {
     AppstoreOutlined,
     LinkOutlined,
     SolutionOutlined,
-    UserOutlined
+    UserOutlined,
+    FolderOpenOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -88,6 +89,12 @@ const InstructorDashboard = () => {
             ]
         },
         {
+            key: 'file-management',
+            icon: <FolderOpenOutlined />,
+            label: 'Quản lý tệp',
+            onClick: () => navigate('/instructor/files')
+        },
+        {
             key: 'statistics',
             icon: <BarChartOutlined />,
             label: 'Thống kê',
@@ -131,6 +138,7 @@ const InstructorDashboard = () => {
         if (path === 'statistics') return 'statistics';
         if (path === 'my-info') return 'my-info';
         if (path === 'change-password') return 'change-password';
+        if (path === 'files') return 'file-management';
         
         // Fallback or default key
         return 'courses';

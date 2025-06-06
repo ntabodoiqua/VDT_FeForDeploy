@@ -235,6 +235,14 @@ const setAvatarFromUploadedFileApi = (fileName) => {
     });
 };
 
+const fetchAllFilesOfUserApi = (params) => {
+    return axios.get('/lms/files/all-files-of-user', { params });
+};
+
+const deleteFileApi = (fileName) => {
+    return axios.delete(`/lms/files/${fileName}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -285,5 +293,7 @@ export {
     updateAvatarApi,
     changeMyPasswordApi,
     fetchAllImagesOfUserApi,
-    setAvatarFromUploadedFileApi
+    setAvatarFromUploadedFileApi,
+    fetchAllFilesOfUserApi,
+    deleteFileApi
 }

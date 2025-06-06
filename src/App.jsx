@@ -24,6 +24,7 @@ import InstructorEnrollmentManagement from './pages/instructor/EnrollmentManagem
 import InstructorReviewManagement from './pages/instructor/ReviewManagement';
 import MyInfoManagement from './pages/instructor/MyInfoManagement';
 import ChangeMyPassword from './pages/instructor/ChangeMyPassword';
+import FileManagement from './pages/instructor/FileManagement';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
@@ -72,6 +73,7 @@ function App() {
                     <Route path="reviews" element={<InstructorReviewManagement />} />
                     <Route path="my-info" element={<MyInfoManagement />} />
                     <Route path="change-password" element={<ChangeMyPassword />} />
+                    <Route path="files" element={<FileManagement />} />
                 </Route>
 
                 {/* Protected routes for STUDENT */}
