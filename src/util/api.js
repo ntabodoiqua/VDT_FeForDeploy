@@ -162,6 +162,25 @@ const fetchEnrollmentProgressApi = (enrollmentId) => {
     return axios.get(`/lms/enrollments/${enrollmentId}/progress`);
 };
 
+// Review Management API calls
+const fetchPendingReviewsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/course-reviews/unapproved/${courseId}?${queryParams.toString()}`);
+};
+
+const fetchApprovedReviewsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/course-reviews/approved/${courseId}?${queryParams.toString()}`);
+};
+
+const approveReviewApi = (reviewId) => {
+    return axios.put(`/lms/course-reviews/approve/${reviewId}`);
+};
+
+const rejectReviewApi = (reviewId) => {
+    return axios.put(`/lms/course-reviews/reject/${reviewId}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -198,4 +217,9 @@ export {
     approveEnrollmentApi,
     rejectEnrollmentApi,
     fetchEnrollmentProgressApi,
+    // Reviews
+    fetchPendingReviewsApi,
+    fetchApprovedReviewsApi,
+    approveReviewApi,
+    rejectReviewApi,
 }

@@ -1,98 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { List, Avatar, Button, Typography, Divider, Card, Select, Rate, Tag } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { List, Avatar, Button, Typography, Divider, Card, Select, Rate, Tag, Spin, Alert, message } from 'antd';
+import { fetchCoursesApi, fetchPendingReviewsApi, fetchApprovedReviewsApi, approveReviewApi, rejectReviewApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
-// Mock data - replace with API calls later
-const mockCoursesWithReviews = [
-    {
-        id: 'course1',
-        name: 'Khóa học ReactJS Cơ bản',
-        instructor: 'Nguyễn Văn A',
-        reviews: [
-            { id: 'rev1', studentName: 'Trần Thị B', studentAvatar: 'https://i.pravatar.cc/150?u=stud1', rating: 5, comment: 'Khóa học rất hay và dễ hiểu!', status: 'approved', date: '2023-10-26' },
-            { id: 'rev2', studentName: 'Lê Văn C', studentAvatar: 'https://i.pravatar.cc/150?u=stud2', rating: 4, comment: 'Nội dung tốt, giảng viên nhiệt tình.', status: 'approved', date: '2023-10-25' },
-        ],
-        pendingReviews: [
-            { id: 'prev1', studentName: 'Phạm Thị D', studentAvatar: 'https://i.pravatar.cc/150?u=pend1', rating: 5, comment: 'Tuyệt vời, mong có thêm khóa học nâng cao.', reason: 'Chờ duyệt', date: '2023-10-27' },
-        ]
-    },
-    {
-        id: 'course2',
-        name: 'Node.js Nâng cao',
-        instructor: 'Nguyễn Thị E',
-        reviews: [
-            { id: 'rev3', studentName: 'Vũ Văn F', studentAvatar: 'https://i.pravatar.cc/150?u=stud3', rating: 3, comment: 'Khá ổn, nhưng cần thêm ví dụ thực tế.', status: 'approved', date: '2023-11-01' },
-        ],
-        pendingReviews: []
-    },
-    {
-        id: 'course3',
-        name: 'Quản lý dự án Agile',
-        instructor: 'Hoàng Văn G',
-        reviews: [],
-        pendingReviews: [
-            { id: 'prev2', studentName: 'Đặng Thị H', studentAvatar: 'https://i.pravatar.cc/150?u=pend2', rating: 4, comment: 'Nội dung bao quát, hữu ích.', reason: 'Chờ duyệt', date: '2023-11-05' },
-            { id: 'prev3', studentName: 'Lý Văn I', studentAvatar: 'https://i.pravatar.cc/150?u=pend3', rating: 5, comment: 'Rất hài lòng với khóa học này!', reason: 'Đã gửi đánh giá', date: '2023-11-03' },
-        ]
-    },
-];
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
+const getFullImageUrl = (relativePath) => {
+    if (!relativePath) return null;
+    // The path from DB might have spaces, encodeURI will handle them to be valid URL.
+    return encodeURI(`${BASE_URL}/lms${relativePath}`);
+};
 
 const ReviewManagement = () => {
-    const [selectedCourse, setSelectedCourse] = useState(null);
-    const [courses, setCourses] = useState([]); // Will be fetched from API
+    const [selectedCourseId, setSelectedCourseId] = useState(null);
+    const [courses, setCourses] = useState([]);
+    const [courseInfo, setCourseInfo] = useState(null);
+    const [approvedReviews, setApprovedReviews] = useState([]);
+    const [pendingReviews, setPendingReviews] = useState([]);
+    
+    const [approvedPagination, setApprovedPagination] = useState({ current: 1, pageSize: 5, total: 0 });
+    const [pendingPagination, setPendingPagination] = useState({ current: 1, pageSize: 5, total: 0 });
+
+    const [coursesLoading, setCoursesLoading] = useState(false);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Simulate API call
-        setCourses(mockCoursesWithReviews);
-        if (mockCoursesWithReviews.length > 0) {
-            // setSelectedCourse(mockCoursesWithReviews[0]); // Auto-select first course
-        }
+        const getCourses = async () => {
+            setCoursesLoading(true);
+            setError(null);
+            try {
+                const response = await fetchCoursesApi({ page: 0, size: 100 });
+                if (response && response.result && response.result.content) {
+                    setCourses(response.result.content);
+                } else {
+                    setCourses([]);
+                }
+            } catch (err) {
+                setError('Không thể tải danh sách khóa học.');
+                console.error(err);
+            } finally {
+                setCoursesLoading(false);
+            }
+        };
+        getCourses();
     }, []);
 
+    const fetchApprovedReviews = useCallback(async (page, pageSize) => {
+        if (!selectedCourseId) return;
+        setActionLoading(true);
+        try {
+            const params = { page: page - 1, size: pageSize };
+            const response = await fetchApprovedReviewsApi(selectedCourseId, params);
+            if (response?.result) {
+                setApprovedReviews(response.result.content || []);
+                setApprovedPagination({ current: page, pageSize, total: response.result.totalElements || 0 });
+            } else {
+                setApprovedReviews([]);
+                setApprovedPagination({ current: page, pageSize, total: 0 });
+            }
+        } catch (err) {
+            setError('Không thể tải nhận xét đã duyệt.');
+            console.error(err);
+        } finally {
+            setActionLoading(false);
+        }
+    }, [selectedCourseId]);
+
+    const fetchPendingReviews = useCallback(async (page, pageSize) => {
+        if (!selectedCourseId) return;
+        setActionLoading(true);
+        try {
+            const params = { page: page - 1, size: pageSize };
+            const response = await fetchPendingReviewsApi(selectedCourseId, params);
+            if (response?.result) {
+                setPendingReviews(response.result.content || []);
+                setPendingPagination({ current: page, pageSize, total: response.result.totalElements || 0 });
+            } else {
+                setPendingReviews([]);
+                setPendingPagination({ current: page, pageSize, total: 0 });
+            }
+        } catch (err) {
+            setError('Không thể tải nhận xét chờ duyệt.');
+            console.error(err);
+        } finally {
+            setActionLoading(false);
+        }
+    }, [selectedCourseId]);
+
+    useEffect(() => {
+        if (selectedCourseId) {
+            setDetailsLoading(true);
+            const courseDetails = courses.find(c => c.id === selectedCourseId);
+            setCourseInfo(courseDetails);
+            
+            Promise.all([
+                fetchApprovedReviews(1, 5),
+                fetchPendingReviews(1, 5)
+            ]).finally(() => {
+                setDetailsLoading(false);
+            });
+        }
+    }, [selectedCourseId, courses, fetchApprovedReviews, fetchPendingReviews]);
+
+
     const handleCourseSelect = (courseId) => {
-        const course = courses.find(c => c.id === courseId);
-        setSelectedCourse(course);
+        setSelectedCourseId(courseId);
     };
 
-    const approveReview = (reviewId) => {
-        console.log(`Approving review ${reviewId} for course ${selectedCourse?.id}`);
-        setSelectedCourse(prev => ({
-            ...prev,
-            reviews: [...prev.reviews, { ...prev.pendingReviews.find(r => r.id === reviewId), status: 'approved' }],
-            pendingReviews: prev.pendingReviews.filter(r => r.id !== reviewId)
-        }));
+    const handleAction = async (action, reviewId) => {
+        setActionLoading(true);
+        try {
+            if (action === 'approve') {
+                await approveReviewApi(reviewId);
+                message.success('Đã duyệt nhận xét.');
+            } else { // reject
+                await rejectReviewApi(reviewId);
+                message.info('Đã từ chối nhận xét.');
+            }
+            // Refetch data for current pages
+            await Promise.all([
+                fetchApprovedReviews(approvedPagination.current, approvedPagination.pageSize),
+                fetchPendingReviews(pendingPagination.current, pendingPagination.pageSize)
+            ]);
+        } catch (err) {
+            console.error(err);
+            message.error('Đã có lỗi xảy ra.');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
-    const rejectReview = (reviewId) => {
-        console.log(`Rejecting review ${reviewId} for course ${selectedCourse?.id}`);
-        setSelectedCourse(prev => ({
-            ...prev,
-            pendingReviews: prev.pendingReviews.filter(r => r.id !== reviewId)
-        }));
-    };
-
-    const renderReviewList = (reviewList, isPending = false) => {
-        if (reviewList.length === 0) {
+    const renderReviewList = (reviewList, pagination, onPageChange, isPending = false) => {
+        if (detailsLoading) {
+            return <Spin />;
+        }
+        if (!reviewList || reviewList.length === 0) {
             return <Text>{isPending ? 'Không có nhận xét nào đang chờ duyệt.' : 'Chưa có nhận xét nào cho khóa học này.'}</Text>;
         }
         return (
             <List
+                loading={actionLoading}
                 itemLayout="vertical"
                 dataSource={reviewList}
+                pagination={{
+                    current: pagination.current,
+                    pageSize: pagination.pageSize,
+                    total: pagination.total,
+                    pageSizeOptions: ['5', '10', '15'],
+                    showSizeChanger: true,
+                    onChange: onPageChange,
+                }}
                 renderItem={item => (
                     <List.Item
                         key={item.id}
                         actions={isPending ? [
-                            <Button type="primary" size="small" onClick={() => approveReview(item.id)}>Duyệt</Button>,
-                            <Button type="default" danger size="small" onClick={() => rejectReview(item.id)}>Từ chối</Button>
+                            <Button type="primary" size="small" onClick={() => handleAction('approve', item.id)}>Duyệt</Button>,
+                            <Button type="default" danger size="small" onClick={() => handleAction('reject', item.id)}>Từ chối</Button>
                         ] : null}
-                        extra={!isPending && <Tag color={item.status === 'approved' ? 'green' : 'orange'}>{item.status}</Tag>}
+                        extra={!isPending ? (item.rejected ? <Tag color="red">Đã từ chối</Tag> : <Tag color="green">Đã duyệt</Tag>) : null}
                     >
                         <List.Item.Meta
-                            avatar={<Avatar src={item.studentAvatar || `https://i.pravatar.cc/150?u=${item.id}`} />}
-                            title={<>{item.studentName} <Text type="secondary" style={{fontSize: '0.85em'}}>- {item.date}</Text></>}
+                            avatar={<Avatar src={getFullImageUrl(item.student?.avatarUrl) || `https://i.pravatar.cc/150?u=${item.student?.id}`} />}
+                            title={<>{`${item.student?.firstName} ${item.student?.lastName}`} <Text type="secondary" style={{fontSize: '0.85em'}}>- {new Date(item.reviewDate).toLocaleDateString()}</Text></>}
                             description={<Rate disabled defaultValue={item.rating} style={{fontSize: 14}}/>}
                         />
                         <Paragraph>{item.comment}</Paragraph>
@@ -108,28 +181,51 @@ const ReviewManagement = () => {
             <Title level={3}>Quản lý Nhận xét Khóa học</Title>
             <Text>Chọn một khóa học để xem và duyệt nhận xét.</Text>
 
+            {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '20px' }} />}
+
             <Select
+                showSearch
                 style={{ width: '100%', marginBottom: '20px', marginTop: '10px' }}
-                placeholder="Chọn khóa học"
+                placeholder="Chọn hoặc tìm kiếm khóa học"
                 onChange={handleCourseSelect}
-                value={selectedCourse?.id}
+                value={selectedCourseId}
+                loading={coursesLoading}
+                filterOption={(input, option) =>
+                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
             >
                 {courses.map(course => (
-                    <Option key={course.id} value={course.id}>{course.name}</Option>
+                    <Option key={course.id} value={course.id}>{course.title}</Option>
                 ))}
             </Select>
 
-            {selectedCourse && (
-                <Card title={`Nhận xét cho khóa học: ${selectedCourse.name}`}>
-                    <Text strong>Giảng viên:</Text> <Text>{selectedCourse.instructor}</Text>
+            {selectedCourseId && courseInfo && (
+                <Card title={`Nhận xét cho khóa học: ${courseInfo.title}`}>
+                    {courseInfo.instructor ? (
+                        <div>
+                            <Text strong>Giảng viên:</Text>
+                            <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', marginBottom: '10px' }}>
+                                <Avatar src={getFullImageUrl(courseInfo.instructor.avatarUrl) || `https://i.pravatar.cc/150?u=${courseInfo.instructor.id}`} size={64} />
+                                <div style={{ marginLeft: '15px' }}>
+                                    <Text strong style={{ fontSize: '16px' }}>{`${courseInfo.instructor.firstName} ${courseInfo.instructor.lastName}`}</Text>
+                                    <br />
+                                    <Text type="secondary">Email: {courseInfo.instructor.email || 'Chưa cập nhật'}</Text>
+                                    <br />
+                                    <Text type="secondary">SĐT: {courseInfo.instructor.phone || 'Chưa cập nhật'}</Text>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <p><Text strong>Giảng viên:</Text> {courseInfo.createdBy || 'N/A'}</p>
+                    )}
                     <Divider />
 
-                    <Title level={4}>Nhận xét đã duyệt ({selectedCourse.reviews.length})</Title>
-                    {renderReviewList(selectedCourse.reviews)}
+                    <Title level={4}>Nhận xét đã xử lý ({approvedPagination.total})</Title>
+                    {renderReviewList(approvedReviews, approvedPagination, (page, pageSize) => fetchApprovedReviews(page, pageSize))}
 
                     <Divider />
-                    <Title level={4}>Nhận xét chờ duyệt ({selectedCourse.pendingReviews.length})</Title>
-                    {renderReviewList(selectedCourse.pendingReviews, true)}
+                    <Title level={4}>Nhận xét chờ duyệt ({pendingPagination.total})</Title>
+                    {renderReviewList(pendingReviews, pendingPagination, (page, pageSize) => fetchPendingReviews(page, pageSize), true)}
                 </Card>
             )}
         </div>
