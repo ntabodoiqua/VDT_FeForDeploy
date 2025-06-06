@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
+import logo from '../../assets/images/logo.png';
 
 const { Header, Sider, Content } = Layout;
 
@@ -63,7 +64,19 @@ const InstructorDashboard = () => {
     return (
         <Layout style={{ minHeight: '100vh' }}>
             <Sider width={250} theme="light">
-                <div style={{ height: 32, margin: 16, background: 'rgba(0, 0, 0, 0.2)' }} />
+                <div 
+                    style={{
+                        height: '64px',
+                        margin: '0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '16px',
+                        borderBottom: '1px solid #f0f0f0',
+                    }}
+                >
+                    <img src={logo} alt="Logo" style={{ height: '40px', maxWidth: '100%' }} />
+                </div>
                 <Menu
                     mode="inline"
                     selectedKeys={[getSelectedKey()]}

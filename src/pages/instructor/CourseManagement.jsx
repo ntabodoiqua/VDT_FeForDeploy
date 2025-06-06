@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, InputNumber, message } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, InputNumber, message, Select } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -212,8 +212,8 @@ const CourseManagement = () => {
                         rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
                     >
                         <Select>
-                            <Option value="ACTIVE">Đang mở</Option>
-                            <Option value="INACTIVE">Đã đóng</Option>
+                            <Select.Option value="ACTIVE">Đang mở</Select.Option>
+                            <Select.Option value="INACTIVE">Đã đóng</Select.Option>
                         </Select>
                     </Form.Item>
 

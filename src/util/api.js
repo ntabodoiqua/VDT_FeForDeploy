@@ -197,6 +197,12 @@ const fetchPopularCoursesApi = (params) => {
     return axios.get(`/lms/courses/public/popular?${queryParams.toString()}`);
 }
 
+const refreshTokenApi = () => {
+    return axios.post('/lms/auth/refresh', {
+        token: localStorage.getItem('access_token')
+    })
+}
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -241,4 +247,5 @@ export {
     fetchAllReviewsApi,
     fetchAllEnrollmentsApi,
     fetchPopularCoursesApi,
+    refreshTokenApi
 }

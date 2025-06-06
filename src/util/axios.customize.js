@@ -1,28 +1,40 @@
 import axios from "axios";
+
 // Set config defaults when creating the instance
 const instance = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_URL
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+
+    failedQueue = [];
+};
+
+
 // Add a request interceptor
 instance.interceptors.request.use(function (config) {
-    // Không thêm token cho login và register
+    // Không thêm token cho login, register và refresh token
     const noAuthPaths = [
-        '/auth/token',
-        '/users'
+        'lms/auth/token',
+        'lms/users',
+        'lms/auth/refresh'
     ];
     // Nếu url không nằm trong danh sách noAuthPaths thì thêm token
-    if (!noAuthPaths.some(path => config.url && config.url.startsWith(path))) {
+    if (!noAuthPaths.some(path => config.url.startsWith(path))) {
         const token = localStorage.getItem("access_token");
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-        } else {
-            // Xóa Authorization nếu không có token
-            delete config.headers.Authorization;
         }
-    } else {
-        // Đảm bảo không có Authorization cho login/register
-        delete config.headers.Authorization;
     }
     return config;
 }, function (error) {
@@ -37,8 +49,49 @@ instance.interceptors.response.use(function (response) {
     if (response && response.data) return response.data;
     return response;
 }, function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
+    const originalRequest = error.config;
+
+    // Kiểm tra lỗi 401 và không phải là request refresh token
+    if (error.response?.status === 401 && originalRequest.url !== 'lms/auth/refresh') {
+        if (isRefreshing) {
+            return new Promise(function (resolve, reject) {
+                failedQueue.push({ resolve, reject });
+            })
+                .then(token => {
+                    originalRequest.headers['Authorization'] = 'Bearer ' + token;
+                    return instance(originalRequest);
+                })
+                .catch(err => {
+                    return Promise.reject(err);
+                });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        return new Promise(async (resolve, reject) => {
+            try {
+                const { result } = await instance.post('lms/auth/refresh', {
+                    token: localStorage.getItem('access_token')
+                });
+                const newAccessToken = result.token;
+                localStorage.setItem('access_token', newAccessToken);
+                instance.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
+                originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
+                processQueue(null, newAccessToken);
+                resolve(instance(originalRequest));
+            } catch (e) {
+                processQueue(e, null);
+                localStorage.removeItem('access_token');
+                // Chuyển hướng về trang login nếu cần
+                // window.location.href = '/login';
+                reject(e);
+            } finally {
+                isRefreshing = false;
+            }
+        });
+    }
+
     if (error?.response?.data) return error?.response?.data;
     return Promise.reject(error);
 });
