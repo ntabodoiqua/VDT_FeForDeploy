@@ -5,7 +5,9 @@ import {
     BookOutlined,
     FileTextOutlined,
     BarChartOutlined,
-    LogoutOutlined
+    LogoutOutlined,
+    AppstoreOutlined,
+    LinkOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -31,16 +33,40 @@ const InstructorDashboard = () => {
 
     const menuItems = [
         {
-            key: 'courses',
-            icon: <BookOutlined />,
-            label: 'Quản lý khóa học',
-            onClick: () => navigate('/instructor/courses')
-        },
-        {
-            key: 'lessons',
-            icon: <FileTextOutlined />,
-            label: 'Quản lý bài học',
-            onClick: () => navigate('/instructor/lessons')
+            key: 'course-lesson-management-group',
+            icon: <AppstoreOutlined />,
+            label: 'Quản lý khóa học - bài học',
+            children: [
+                {
+                    key: 'course-management-submenu',
+                    icon: <BookOutlined />,
+                    label: 'Quản lý khóa học',
+                    children: [
+                        {
+                            key: 'courses',
+                            label: 'Danh sách khóa học',
+                            onClick: () => navigate('/instructor/courses'),
+                        },
+                        {
+                            key: 'course-categories',
+                            label: 'Quản lý danh mục',
+                            onClick: () => navigate('/instructor/course-categories'),
+                        }
+                    ]
+                },
+                {
+                    key: 'lessons',
+                    icon: <FileTextOutlined />,
+                    label: 'Quản lý bài học',
+                    onClick: () => navigate('/instructor/lessons')
+                },
+                {
+                    key: 'course-lesson-management',
+                    icon: <LinkOutlined />,
+                    label: 'Liên kết Khóa học - Bài học',
+                    onClick: () => navigate('/instructor/course-lesson-management')
+                }
+            ]
         },
         {
             key: 'statistics',
@@ -58,12 +84,25 @@ const InstructorDashboard = () => {
 
     const getSelectedKey = () => {
         const path = location.pathname.split('/')[2];
+        if (path === 'course-categories') return 'course-categories';
+        if (path === 'course-lesson-management') return 'course-lesson-management';
         return path || 'courses';
+    };
+
+    const getDefaultOpenKeys = () => {
+        const currentPath = location.pathname;
+        if (currentPath.includes('/instructor/courses') || currentPath.includes('/instructor/course-categories')) {
+            return ['course-lesson-management-group', 'course-management-submenu'];
+        }
+        if (currentPath.includes('/instructor/lessons') || currentPath.includes('/instructor/course-lesson-management')) {
+            return ['course-lesson-management-group'];
+        }
+        return [];
     };
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider width={250} theme="light">
+            <Sider width={280} theme="light">
                 <div 
                     style={{
                         height: '64px',
@@ -80,6 +119,7 @@ const InstructorDashboard = () => {
                 <Menu
                     mode="inline"
                     selectedKeys={[getSelectedKey()]}
+                    defaultOpenKeys={getDefaultOpenKeys()}
                     items={menuItems}
                     style={{ height: '100%', borderRight: 0 }}
                 />

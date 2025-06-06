@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Tooltip, Descriptions, Tag, DatePicker, Row, Col, Card } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { AuthContext } from '../../components/context/auth.context';
 import {
     fetchCategoriesApi,
     fetchCategoryByIdApi,
@@ -14,6 +15,7 @@ import {
 const { TextArea } = Input;
 
 const CategoryManagement = () => {
+    const { auth } = useContext(AuthContext);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -57,30 +59,36 @@ const CategoryManagement = () => {
         {
             title: 'Thao tác',
             key: 'action',
-            render: (_, record) => (
-                <Space size="middle">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            icon={<EyeOutlined />}
-                            onClick={() => handleViewDetails(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Sửa">
-                        <Button
-                            type="primary"
-                            icon={<EditOutlined />}
-                            onClick={() => handleEdit(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Xóa">
-                        <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDelete(record)}
-                        />
-                    </Tooltip>
-                </Space>
-            ),
+            render: (_, record) => {
+                const isOwner = record.createdByUsername === auth.username;
+
+                return (
+                    <Space size="middle">
+                        <Tooltip title="Xem chi tiết">
+                            <Button
+                                icon={<EyeOutlined />}
+                                onClick={() => handleViewDetails(record)}
+                            />
+                        </Tooltip>
+                        <Tooltip title={!isOwner ? "Bạn không có quyền chỉnh sửa danh mục này" : "Sửa"}>
+                            <Button
+                                type="primary"
+                                icon={<EditOutlined />}
+                                onClick={() => handleEdit(record)}
+                                disabled={!isOwner}
+                            />
+                        </Tooltip>
+                        <Tooltip title={!isOwner ? "Bạn không có quyền xóa danh mục này" : "Xóa"}>
+                            <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleDelete(record)}
+                                disabled={!isOwner}
+                            />
+                        </Tooltip>
+                    </Space>
+                )
+            },
         },
     ];
 
