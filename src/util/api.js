@@ -192,6 +192,11 @@ const fetchAllEnrollmentsApi = (params) => {
     return axios.get(`/lms/enrollments/all-for-admin?${queryParams.toString()}`);
 }
 
+const fetchPopularCoursesApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/courses/public/popular?${queryParams.toString()}`);
+}
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -235,4 +240,5 @@ export {
     rejectReviewApi,
     fetchAllReviewsApi,
     fetchAllEnrollmentsApi,
+    fetchPopularCoursesApi,
 }

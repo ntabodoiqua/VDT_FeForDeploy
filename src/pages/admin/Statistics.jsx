@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag } from 'antd';
-import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
-import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi } from '../../util/api';
+import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag, Radio } from 'antd';
+import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined, TrophyOutlined } from '@ant-design/icons';
+import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi, fetchPopularCoursesApi } from '../../util/api';
 import { Link } from 'react-router-dom';
 
 const { RangePicker } = DatePicker;
@@ -16,6 +16,28 @@ const Statistics = () => {
     });
     const [recentEnrollments, setRecentEnrollments] = useState([]);
     const [recentReviews, setRecentReviews] = useState([]);
+    const [popularCourses, setPopularCourses] = useState([]);
+    const [popularCoursesLimit, setPopularCoursesLimit] = useState(5);
+    const [loadingPopular, setLoadingPopular] = useState(false);
+
+    const popularCoursesColumns = [
+        {
+            title: 'Hạng',
+            key: 'rank',
+            render: (text, record, index) => index + 1,
+        },
+        {
+            title: 'Khóa học',
+            dataIndex: ['course', 'title'],
+            key: 'courseTitle',
+            render: (text, record) => <Link to={`/admin/courses`}>{text}</Link>,
+        },
+        {
+            title: 'Số lượt đăng ký',
+            dataIndex: 'enrollmentCount',
+            key: 'enrollmentCount',
+        },
+    ];
 
     const reviewColumns = [
         {
@@ -94,6 +116,23 @@ const Statistics = () => {
         }
     ];
 
+    const fetchPopularCourses = async () => {
+        setLoadingPopular(true);
+        try {
+            const response = await fetchPopularCoursesApi({ limit: popularCoursesLimit });
+            if (response && response.result) {
+                setPopularCourses(response.result.map(c => ({ ...c, key: c.course.id })));
+            } else {
+                message.error(response?.message || 'Không thể tải khóa học phổ biến.');
+            }
+        } catch (error) {
+            console.error('Error fetching popular courses:', error);
+            message.error('Lỗi khi tải khóa học phổ biến.');
+        } finally {
+            setLoadingPopular(false);
+        }
+    };
+
     const fetchStatistics = async () => {
         setLoading(true);
         try {
@@ -149,6 +188,10 @@ const Statistics = () => {
     useEffect(() => {
         fetchStatistics();
     }, []);
+
+    useEffect(() => {
+        fetchPopularCourses();
+    }, [popularCoursesLimit]);
 
     const handleDateRangeChange = (dates) => {
         if (dates) {
@@ -206,17 +249,43 @@ const Statistics = () => {
                 </Col>
             </Row>
 
-            <Card
-                title="Đăng ký gần đây"
-                style={{ marginTop: 16 }}
-            >
-                <Table
-                    columns={columns}
-                    dataSource={recentEnrollments}
-                    rowKey="key"
-                    loading={loading}
-                />
-            </Card>
+            <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={12}>
+                    <Card
+                        title="Đăng ký gần đây"
+                    >
+                        <Table
+                            columns={columns}
+                            dataSource={recentEnrollments}
+                            rowKey="key"
+                            loading={loading}
+                        />
+                    </Card>
+                </Col>
+                <Col span={12}>
+                    <Card
+                        title={
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span><TrophyOutlined /> Khóa học phổ biến nhất</span>
+                                <Radio.Group
+                                    value={popularCoursesLimit}
+                                    onChange={(e) => setPopularCoursesLimit(e.target.value)}
+                                >
+                                    <Radio.Button value={5}>Top 5</Radio.Button>
+                                    <Radio.Button value={10}>Top 10</Radio.Button>
+                                </Radio.Group>
+                            </div>
+                        }
+                    >
+                        <Table
+                            columns={popularCoursesColumns}
+                            dataSource={popularCourses}
+                            rowKey="key"
+                            loading={loadingPopular}
+                        />
+                    </Card>
+                </Col>
+            </Row>
 
             <Card
                 title="Đánh giá gần đây"
