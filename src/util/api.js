@@ -203,6 +203,24 @@ const refreshTokenApi = () => {
     })
 }
 
+const fetchMyInfoApi = () => {
+    return axios.get('/lms/users/myInfo');
+};
+
+const updateMyInfoApi = (data) => {
+    return axios.put('/lms/users/update-info', data);
+};
+
+const updateAvatarApi = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axios.post('/lms/users/avatar', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -247,5 +265,8 @@ export {
     fetchAllReviewsApi,
     fetchAllEnrollmentsApi,
     fetchPopularCoursesApi,
-    refreshTokenApi
+    refreshTokenApi,
+    fetchMyInfoApi,
+    updateMyInfoApi,
+    updateAvatarApi
 }

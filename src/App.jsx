@@ -22,6 +22,8 @@ import InstructorCourseLessonManagement from './pages/instructor/CourseLessonMan
 import InstructorCategoryManagement from './pages/instructor/CategoryManagement';
 import InstructorEnrollmentManagement from './pages/instructor/EnrollmentManagement';
 import InstructorReviewManagement from './pages/instructor/ReviewManagement';
+import MyInfoManagement from './pages/instructor/MyInfoManagement';
+import ChangeMyPassword from './pages/instructor/ChangeMyPassword';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
@@ -68,6 +70,8 @@ function App() {
                     <Route path="course-lesson-management" element={<InstructorCourseLessonManagement />} />
                     <Route path="enrollments" element={<InstructorEnrollmentManagement />} />
                     <Route path="reviews" element={<InstructorReviewManagement />} />
+                    <Route path="my-info" element={<MyInfoManagement />} />
+                    <Route path="change-password" element={<ChangeMyPassword />} />
                 </Route>
 
                 {/* Protected routes for STUDENT */}

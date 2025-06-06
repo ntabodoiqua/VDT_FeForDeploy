@@ -99,14 +99,14 @@ const InstructorDashboard = () => {
             label: 'Quản lý tài khoản',
             children: [
                 {
-                    key: 'view-info',
+                    key: 'my-info',
                     label: 'Xem thông tin',
-                    onClick: () => navigate('/instructor/account/view'),
+                    onClick: () => navigate('/instructor/my-info'),
                 },
                 {
                     key: 'change-password',
                     label: 'Đổi mật khẩu',
-                    onClick: () => navigate('/instructor/account/password'),
+                    onClick: () => navigate('/instructor/change-password'),
                 },
                 {
                     key: 'logout',
@@ -121,7 +121,6 @@ const InstructorDashboard = () => {
 
     const getSelectedKey = () => {
         const path = location.pathname.split('/')[2];
-        const subPath = location.pathname.split('/')[3];
 
         if (path === 'courses') return 'courses';
         if (path === 'course-categories') return 'course-categories';
@@ -130,10 +129,9 @@ const InstructorDashboard = () => {
         if (path === 'enrollments') return 'enrollments';
         if (path === 'reviews') return 'reviews';
         if (path === 'statistics') return 'statistics';
-        if (path === 'account') {
-            if (subPath === 'view') return 'view-info';
-            if (subPath === 'password') return 'change-password';
-        }
+        if (path === 'my-info') return 'my-info';
+        if (path === 'change-password') return 'change-password';
+        
         // Fallback or default key
         return 'courses';
     };
@@ -149,7 +147,7 @@ const InstructorDashboard = () => {
         if (currentPath.includes('/instructor/enrollments') || currentPath.includes('/instructor/reviews')) {
             return ['enrollment-review-management-group'];
         }
-        if (currentPath.includes('/instructor/account')) {
+        if (currentPath.includes('/instructor/my-info') || currentPath.includes('/instructor/change-password')) {
             return ['account-management'];
         }
         return [];
