@@ -158,7 +158,6 @@ const CourseLessonManagement = () => {
                     const params = {
                         page: allLessonsModalPagination.current - 1,
                         size: allLessonsModalPagination.pageSize,
-                        creatorUsername: auth.username,
                     };
                     const apiResponse = await fetchAllSystemLessonsApi(params);
                     if (apiResponse && typeof apiResponse.code !== 'undefined') {
@@ -743,10 +742,15 @@ const CourseLessonManagement = () => {
                                 setLessonConfigurations(nextConfigs);
                             },
                             selectedRowKeys: lessonsToAdd,
-                            getCheckboxProps: (record) => ({
-                                disabled: lessonsInCourse.some(lInCourse => lInCourse.lesson.id === record.id),
-                                name: record.title,
-                            }),
+                            getCheckboxProps: (record) => {
+                                const isAlreadyInCourse = lessonsInCourse.some(lInCourse => lInCourse.lesson.id === record.id);
+                                // Disable lessons not created by the current instructor
+                                const isNotOwner = record.createdBy?.username !== auth.username;
+                                return {
+                                    disabled: isAlreadyInCourse || isNotOwner,
+                                    name: record.title,
+                                };
+                            },
                         }}
                         columns={lessonSelectionColumns}
                         dataSource={allSystemLessons}
