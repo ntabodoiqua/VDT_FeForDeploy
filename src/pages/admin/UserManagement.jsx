@@ -41,6 +41,7 @@ const UserManagement = () => {
     const [filterRoles, setFilterRoles] = useState(null);
     const [currentSorter, setCurrentSorter] = useState({ field: 'username', order: 'ascend' });
 
+    const [appliedFilters, setAppliedFilters] = useState({});
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [editForm] = Form.useForm();
@@ -71,6 +72,21 @@ const UserManagement = () => {
         setter(value);
     };
 
+    const handleApplyFilters = () => {
+        const newFilters = {
+            username: filterUsername,
+            firstName: filterFirstName,
+            lastName: filterLastName,
+            enabled: filterEnabled,
+            gender: filterGender,
+            createdFrom: filterCreatedFrom,
+            createdTo: filterCreatedTo,
+            roles: filterRoles,
+        };
+        setAppliedFilters(newFilters);
+        setPagination(prev => ({ ...prev, current: 1 }));
+    };
+
     const handleResetFilters = () => {
         setFilterUsername('');
         setFilterFirstName('');
@@ -80,6 +96,7 @@ const UserManagement = () => {
         setFilterCreatedFrom(null);
         setFilterCreatedTo(null);
         setFilterRoles(null);
+        setAppliedFilters({});
         setPagination(prev => ({ ...prev, current: 1 }));
         setCurrentSorter({ field: 'username', order: 'ascend' });
     };
@@ -90,22 +107,22 @@ const UserManagement = () => {
             size: pagination.pageSize
         };
 
-        if (filterUsername && filterUsername.trim() !== '') params.username = filterUsername.trim();
-        if (filterFirstName && filterFirstName.trim() !== '') params.firstName = filterFirstName.trim();
-        if (filterLastName && filterLastName.trim() !== '') params.lastName = filterLastName.trim();
-        if (typeof filterEnabled === 'boolean') params.enabled = filterEnabled;
-        if (filterGender) params.gender = filterGender;
-        if (filterCreatedFrom) {
-            const fromDate = new Date(filterCreatedFrom.format('YYYY-MM-DD'));
+        if (appliedFilters.username && appliedFilters.username.trim() !== '') params.username = appliedFilters.username.trim();
+        if (appliedFilters.firstName && appliedFilters.firstName.trim() !== '') params.firstName = appliedFilters.firstName.trim();
+        if (appliedFilters.lastName && appliedFilters.lastName.trim() !== '') params.lastName = appliedFilters.lastName.trim();
+        if (typeof appliedFilters.enabled === 'boolean') params.enabled = appliedFilters.enabled;
+        if (appliedFilters.gender) params.gender = appliedFilters.gender;
+        if (appliedFilters.createdFrom) {
+            const fromDate = new Date(appliedFilters.createdFrom.format('YYYY-MM-DD'));
             fromDate.setHours(0, 0, 0, 0);
             params.createdFrom = fromDate.toISOString();
         }
-        if (filterCreatedTo) {
-            const toDate = new Date(filterCreatedTo.format('YYYY-MM-DD'));
+        if (appliedFilters.createdTo) {
+            const toDate = new Date(appliedFilters.createdTo.format('YYYY-MM-DD'));
             toDate.setHours(23, 59, 59, 999);
             params.createdTo = toDate.toISOString();
         }
-        if (filterRoles) params.roles = filterRoles;
+        if (appliedFilters.roles) params.roles = appliedFilters.roles;
 
         if (currentSorter && currentSorter.field && currentSorter.order) {
             params.sort = `${currentSorter.field},${currentSorter.order === 'ascend' ? 'asc' : 'desc'}`;
@@ -149,8 +166,7 @@ const UserManagement = () => {
         }
     }, [
         pagination.current, pagination.pageSize, currentSorter,
-        filterUsername, filterFirstName, filterLastName, filterEnabled,
-        filterGender, filterCreatedFrom, filterCreatedTo, filterRoles
+        appliedFilters
     ]);
 
     useEffect(() => {
@@ -581,7 +597,7 @@ const UserManagement = () => {
                     <Option value="INSTRUCTOR">Giảng viên</Option>
                     <Option value="STUDENT">Học viên</Option>
                 </Select>
-                <Button type="primary" onClick={fetchData}>
+                <Button type="primary" onClick={handleApplyFilters}>
                     Áp dụng Bộ lọc
                 </Button>
                 <Button onClick={handleResetFilters}>

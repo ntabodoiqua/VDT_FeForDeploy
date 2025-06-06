@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { fetchAllSystemLessonsApi, fetchLessonByIdApi, updateLessonApi, createLessonApi, deleteLessonApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
 
 const { TextArea } = Input;
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 const LessonManagement = () => {
     const [lessons, setLessons] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [form] = Form.useForm();
+    const [filterForm] = Form.useForm();
     const [editingLesson, setEditingLesson] = useState(null);
+    const [filters, setFilters] = useState({});
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -19,6 +23,38 @@ const LessonManagement = () => {
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedLessonDetails, setSelectedLessonDetails] = useState(null);
     const [loadingViewDetails, setLoadingViewDetails] = useState(false);
+
+    const handleFilterSubmit = (values) => {
+        const newFilters = { ...values };
+
+        if (newFilters.createdDate) {
+            newFilters.createdFrom = newFilters.createdDate[0].startOf('day').toISOString();
+            newFilters.createdTo = newFilters.createdDate[1].endOf('day').toISOString();
+        }
+        delete newFilters.createdDate;
+
+        if (newFilters.updatedDate) {
+            newFilters.updatedFrom = newFilters.updatedDate[0].startOf('day').toISOString();
+            newFilters.updatedTo = newFilters.updatedDate[1].endOf('day').toISOString();
+        }
+        delete newFilters.updatedDate;
+
+        const cleanedFilters = {};
+        Object.keys(newFilters).forEach(key => {
+            if (newFilters[key] !== null && newFilters[key] !== undefined && newFilters[key] !== '') {
+                cleanedFilters[key] = newFilters[key];
+            }
+        });
+
+        setFilters(cleanedFilters);
+        fetchLessons(1, pagination.pageSize, cleanedFilters);
+    };
+
+    const handleFilterReset = () => {
+        filterForm.resetFields();
+        setFilters({});
+        fetchLessons(1, pagination.pageSize, {});
+    };
 
     const columns = [
         {
@@ -69,12 +105,12 @@ const LessonManagement = () => {
         },
     ];
 
-    const fetchLessons = async (page = 1, pageSize = 10) => {
+    const fetchLessons = async (page = 1, pageSize = 10, currentFilters = filters) => {
         setLoading(true);
         try {
             // The shared fetchAllSystemLessonsApi will use the customized Axios instance,
             // which should handle token and base URL automatically.
-            const params = { page: page - 1, size: pageSize };
+            const params = { page: page - 1, size: pageSize, ...currentFilters };
             const apiResponse = await fetchAllSystemLessonsApi(params);
 
             if (apiResponse && typeof apiResponse.code !== 'undefined') {
@@ -230,6 +266,64 @@ const LessonManagement = () => {
 
     return (
         <div>
+            <Form
+                form={filterForm}
+                onFinish={handleFilterSubmit}
+                layout="vertical"
+                style={{ marginBottom: 24, padding: '16px 24px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #d9d9d9' }}
+            >
+                <Row gutter={24}>
+                    <Col span={8}>
+                        <Form.Item name="title" label="Tên bài học">
+                            <Input placeholder="Tìm theo tên bài học" allowClear />
+                        </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                        <Form.Item name="createdBy" label="Người tạo">
+                            <Input placeholder="Tìm theo username người tạo" allowClear />
+                        </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                        <Form.Item name="createdDate" label="Ngày tạo">
+                            <RangePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row gutter={24}>
+                    <Col span={8}>
+                        <Form.Item name="updatedDate" label="Ngày cập nhật">
+                            <RangePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Col>
+                    <Col span={4}>
+                        <Form.Item name="hasVideo" label="Có Video">
+                            <Select placeholder="Tất cả" allowClear>
+                                <Option value={true}>Có</Option>
+                                <Option value={false}>Không</Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col span={4}>
+                        <Form.Item name="hasAttachment" label="Có tài liệu">
+                            <Select placeholder="Tất cả" allowClear>
+                                <Option value={true}>Có</Option>
+                                <Option value={false}>Không</Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col span={8} style={{ textAlign: 'right', alignSelf: 'flex-end', paddingBottom: '8px' }}>
+                        <Space>
+                            <Button type="primary" htmlType="submit">
+                                Lọc
+                            </Button>
+                            <Button onClick={handleFilterReset}>
+                                Xóa bộ lọc
+                            </Button>
+                        </Space>
+                    </Col>
+                </Row>
+            </Form>
+
             <div style={{ marginBottom: 16 }}>
                 <Button
                     type="primary"
