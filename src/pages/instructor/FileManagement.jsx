@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image } from 'antd';
-import { DeleteOutlined, ExclamationCircleOutlined, DownloadOutlined } from '@ant-design/icons';
-import { fetchAllFilesOfUserApi, deleteFileApi, downloadFileWithTokenApi } from '../../util/api';
+import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image, List } from 'antd';
+import { DeleteOutlined, ExclamationCircleOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
+import { fetchAllFilesOfUserApi, deleteFileApi, downloadFileWithTokenApi, checkFileUsageApi } from '../../util/api';
 import moment from 'moment';
 import { debounce } from 'lodash';
 
@@ -23,6 +23,8 @@ const FileManagement = () => {
         contentType: null,
         fileName: '',
     });
+    const [fileUsageCache, setFileUsageCache] = useState({});
+    const [loadingUsage, setLoadingUsage] = useState({});
 
     const fetchFiles = useCallback(async (page, size, currentFilters) => {
         setLoading(true);
@@ -57,24 +59,110 @@ const FileManagement = () => {
         debouncedFetchFiles(pagination.current, pagination.pageSize, filters);
     }, [filters, debouncedFetchFiles]);
 
-    const handleDelete = (fileName) => {
-        confirm({
-            title: 'Bạn có chắc chắn muốn xóa tệp này?',
-            icon: <ExclamationCircleOutlined />,
-            content: `Tệp "${fileName}" sẽ bị xóa vĩnh viễn.`,
-            okText: 'Xóa',
-            okType: 'danger',
-            cancelText: 'Hủy',
-            onOk: async () => {
-                try {
-                    await deleteFileApi(fileName);
-                    notification.success({ message: 'Tệp đã được xóa thành công' });
-                    fetchFiles(pagination.current, pagination.pageSize, filters);
-                } catch (error) {
-                    notification.error({ message: 'Lỗi khi xóa tệp' });
-                }
-            },
-        });
+    const handleDelete = async (fileName) => {
+        try {
+            // First check if file is being used
+            const usageResponse = await checkFileUsageApi(fileName);
+            const fileUsage = usageResponse.result;
+
+            if (fileUsage.isUsed || fileUsage.used) {
+                // Show detailed warning if file is in use
+                Modal.confirm({
+                    title: 'Cảnh báo: File đang được sử dụng!',
+                    icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
+                    content: (
+                        <div>
+                            <p style={{ marginBottom: '16px', fontWeight: 'bold', color: '#ff4d4f' }}>
+                                File "{fileName}" đang được sử dụng trong:
+                            </p>
+                            <List
+                                size="small"
+                                dataSource={fileUsage.usageDetails}
+                                renderItem={(item) => (
+                                    <List.Item>
+                                        <div>
+                                            <Tag color={
+                                                item.type === 'course' ? 'blue' : 
+                                                item.type === 'lesson' ? 'green' : 
+                                                item.type === 'course_thumbnail' ? 'purple' : 
+                                                item.type === 'user_avatar' ? 'orange' : 'gray'
+                                            }>
+                                                {item.type === 'course' ? 'Khóa học' : 
+                                                item.type === 'lesson' ? 'Bài học' :
+                                                item.type === 'course_thumbnail' ? 'Thumbnail khóa học' :
+                                                item.type === 'user_avatar' ? 'Avatar người dùng' : 'Khác'}
+                                            </Tag>
+                                            <strong>{item.title}</strong>
+                                            <br />
+                                            <span style={{ color: '#666', fontSize: '12px' }}>{item.description}</span>
+                                        </div>
+                                    </List.Item>
+                                )}
+                            />
+                            <p style={{ marginTop: '16px', color: '#ff4d4f' }}>
+                                <strong>Nếu bạn xóa file này:</strong>
+                                <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                                    {fileUsage.usageDetails.some(item => item.type === 'course' || item.type === 'lesson') && (
+                                        <li>Các tài liệu trong khóa học/bài học sẽ không thể tải xuống được!</li>
+                                    )}
+                                    {fileUsage.usageDetails.some(item => item.type === 'course_thumbnail') && (
+                                        <li>Thumbnail khóa học sẽ bị mất và hiển thị ảnh mặc định!</li>
+                                    )}
+                                    {fileUsage.usageDetails.some(item => item.type === 'user_avatar') && (
+                                        <li>Avatar người dùng sẽ bị mất và hiển thị avatar mặc định!</li>
+                                    )}
+                                </ul>
+                            </p>
+                            <p>Bạn có chắc chắn muốn tiếp tục xóa không?</p>
+                        </div>
+                    ),
+                    okText: 'Vẫn xóa',
+                    okType: 'danger',
+                    cancelText: 'Hủy',
+                    width: 600,
+                    onOk: async () => {
+                        await performDelete(fileName);
+                    },
+                });
+            } else {
+                // Show simple confirmation if file is not in use
+                confirm({
+                    title: 'Bạn có chắc chắn muốn xóa tệp này?',
+                    icon: <ExclamationCircleOutlined />,
+                    content: `Tệp "${fileName}" sẽ bị xóa vĩnh viễn.`,
+                    okText: 'Xóa',
+                    okType: 'danger',
+                    cancelText: 'Hủy',
+                    onOk: async () => {
+                        await performDelete(fileName);
+                    },
+                });
+            }
+        } catch (error) {
+            console.error('Error checking file usage:', error);
+            // Fallback to simple confirmation if check fails
+            confirm({
+                title: 'Bạn có chắc chắn muốn xóa tệp này?',
+                icon: <ExclamationCircleOutlined />,
+                content: `Tệp "${fileName}" sẽ bị xóa vĩnh viễn. (Không thể kiểm tra tình trạng sử dụng)`,
+                okText: 'Xóa',
+                okType: 'danger',
+                cancelText: 'Hủy',
+                onOk: async () => {
+                    await performDelete(fileName);
+                },
+            });
+        }
+    };
+
+    const performDelete = async (fileName) => {
+        try {
+            await deleteFileApi(fileName);
+            notification.success({ message: 'Tệp đã được xóa thành công' });
+            fetchFiles(pagination.current, pagination.pageSize, filters);
+        } catch (error) {
+            notification.error({ message: 'Lỗi khi xóa tệp' });
+        }
     };
 
     const handleTableChange = (newPagination) => {
@@ -158,7 +246,72 @@ const FileManagement = () => {
         return `${baseUrl}/lms/uploads/${folder}/${file.fileName}`;
     };
 
+    const checkFileUsageStatus = async (fileName) => {
+        if (fileUsageCache[fileName] !== undefined) {
+            return fileUsageCache[fileName];
+        }
 
+        if (loadingUsage[fileName]) {
+            return null;
+        }
+
+        setLoadingUsage(prev => ({ ...prev, [fileName]: true }));
+        
+        try {
+            const response = await checkFileUsageApi(fileName);
+            const usage = response.result;
+            setFileUsageCache(prev => ({ ...prev, [fileName]: usage }));
+            return usage;
+        } catch (error) {
+            console.error('Error checking file usage:', error);
+            return null;
+        } finally {
+            setLoadingUsage(prev => ({ ...prev, [fileName]: false }));
+        }
+    };
+
+    const renderUsageStatus = (fileName) => {
+        const usage = fileUsageCache[fileName];
+        const loading = loadingUsage[fileName];
+
+        if (loading) {
+            return <Tag>Đang kiểm tra...</Tag>;
+        }
+
+        if (usage === null || usage === undefined) {
+            return (
+                <Button 
+                    size="small" 
+                    type="link" 
+                    onClick={() => checkFileUsageStatus(fileName)}
+                    style={{ padding: 0, height: 'auto' }}
+                >
+                    Kiểm tra
+                </Button>
+            );
+        }
+
+        if (usage.isUsed || usage.used) {
+            return (
+                <Tag color="warning" icon={<WarningOutlined />}>
+                    Đang sử dụng ({usage.usageDetails.length})
+                </Tag>
+            );
+        }
+
+        return <Tag color="success">Không sử dụng</Tag>;
+    };
+
+    // Load usage status when files change
+    useEffect(() => {
+        if (files.length > 0) {
+            files.forEach(file => {
+                if (!fileUsageCache[file.fileName] && !loadingUsage[file.fileName]) {
+                    checkFileUsageStatus(file.fileName);
+                }
+            });
+        }
+    }, [files]);
 
     const columns = [
         {
@@ -214,6 +367,12 @@ const FileManagement = () => {
             },
         },
         {
+            title: 'Trạng thái sử dụng',
+            key: 'usage',
+            align: 'center',
+            render: (text, record) => renderUsageStatus(record.fileName),
+        },
+        {
             title: 'Loại nội dung',
             dataIndex: 'contentType',
             key: 'contentType',
@@ -241,21 +400,28 @@ const FileManagement = () => {
         {
             title: 'Hành động',
             key: 'action',
-            render: (text, record) => (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button
-                        icon={<DownloadOutlined />}
-                        onClick={() => downloadFileWithToken(record)}
-                        title="Tải xuống"
-                    />
-                    <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDelete(record.fileName)}
-                        title="Xóa"
-                    />
-                </div>
-            ),
+            render: (text, record) => {
+                const usage = fileUsageCache[record.fileName];
+                const isInUse = usage?.isUsed || usage?.used;
+                
+                return (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button
+                            icon={<DownloadOutlined />}
+                            onClick={() => downloadFileWithToken(record)}
+                            title="Tải xuống"
+                        />
+                        <Button
+                            danger={!isInUse}
+                            type={isInUse ? "default" : "primary"}
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDelete(record.fileName)}
+                            title={isInUse ? "Xóa (Đang được sử dụng!)" : "Xóa"}
+                            style={isInUse ? { borderColor: '#ff4d4f', color: '#ff4d4f' } : {}}
+                        />
+                    </div>
+                );
+            },
         },
     ];
 

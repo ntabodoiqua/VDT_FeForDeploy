@@ -302,6 +302,11 @@ const downloadFileWithTokenApi = async (fileName) => {
     });
 };
 
+// API to check file usage before deletion
+const checkFileUsageApi = (fileName) => {
+    return axios.get(`/lms/files/check-usage/${fileName}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -368,5 +373,7 @@ export {
     // Student View APIs
     fetchLessonFilesApi,
     // File download with authentication
-    downloadFileWithTokenApi
+    downloadFileWithTokenApi,
+    // File usage check
+    checkFileUsageApi
 }

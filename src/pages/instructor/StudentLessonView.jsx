@@ -28,7 +28,7 @@ import {
     PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { fetchLessonByIdApi, fetchLessonFilesApi } from '../../util/api';
+import { fetchLessonByIdApi, fetchLessonDocumentsApi, downloadLessonDocumentApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -100,17 +100,14 @@ const StudentLessonView = () => {
     const fetchLessonFiles = async () => {
         setFilesLoading(true);
         try {
-            // Assuming there's an API to fetch lesson files
-            // Replace with actual API call
-            const response = await fetchLessonFilesApi(lessonId);
+            const response = await fetchLessonDocumentsApi(lessonId);
             if (response.code === 1000 && response.result) {
                 setFiles(response.result);
             } else {
-                // If no files API available, set empty array
                 setFiles([]);
             }
         } catch (error) {
-            // If API doesn't exist, just set empty array
+            console.error('Error fetching lesson documents:', error);
             setFiles([]);
         } finally {
             setFilesLoading(false);
@@ -127,10 +124,31 @@ const StudentLessonView = () => {
         navigate(-1);
     };
 
-    const handleFileDownload = (file) => {
-        const fileUrl = getDisplayImageUrl(file.filePath);
-        if (fileUrl) {
-            window.open(fileUrl, '_blank');
+    const handleFileDownload = async (file) => {
+        try {
+            const response = await downloadLessonDocumentApi(lessonId, file.id);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', file.fileName || file.originalFileName || 'document');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            message.success('Tải xuống thành công');
+        } catch (error) {
+            console.error('Error downloading document:', error);
+            message.error('Không thể tải xuống tài liệu');
+            
+            // Fallback to old method if API fails
+            if (file.downloadUrl) {
+                window.open(file.downloadUrl, '_blank');
+            } else {
+                const fileUrl = getDisplayImageUrl(file.filePath);
+                if (fileUrl) {
+                    window.open(fileUrl, '_blank');
+                }
+            }
         }
     };
 
@@ -260,8 +278,8 @@ const StudentLessonView = () => {
                                             <UserOutlined style={{ color: '#1890ff' }} />
                                             <Text strong>Giảng viên:</Text>
                                             <Text style={{ color: '#666' }}>
-                                                {lesson.instructor ? 
-                                                    `${lesson.instructor.firstName} ${lesson.instructor.lastName}` : 
+                                                {lesson.createdBy ? 
+                                                    `${lesson.createdBy.firstName} ${lesson.createdBy.lastName}` : 
                                                     'Chưa cập nhật'
                                                 }
                                             </Text>
@@ -458,7 +476,7 @@ const StudentLessonView = () => {
                                                         color: '#1890ff'
                                                     }}
                                                 >
-                                                    {file.fileName || file.name}
+                                                    {file.fileName || file.originalFileName || file.title || file.name}
                                                 </Text>
                                             }
                                             description={
