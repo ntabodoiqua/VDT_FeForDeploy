@@ -63,28 +63,40 @@ const LessonManagement = () => {
             title: 'Tên bài học',
             dataIndex: 'title',
             key: 'title',
+            width: 220,
+            ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
+            width: 300,
             ellipsis: true,
+            align: 'center',
             render: (description) => description || 'Chưa có mô tả',
         },
         {
             title: 'Số khóa học',
             dataIndex: 'courseCount',
             key: 'courseCount',
+            width: 100,
+            align: 'center',
         },
         {
             title: 'Giảng viên',
             dataIndex: ['createdBy', 'username'],
             key: 'instructorName',
+            width: 150,
+            ellipsis: true,
+            align: 'center',
             render: (username, record) => record.createdBy ? record.createdBy.username : 'N/A',
         },
         {
             title: 'Thao tác',
             key: 'action',
+            width: 200,
+            align: 'center',
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">

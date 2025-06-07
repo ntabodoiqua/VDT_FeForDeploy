@@ -36,27 +36,38 @@ const CategoryManagement = () => {
             title: 'Tên danh mục',
             dataIndex: 'name',
             key: 'name',
+            width: 200,
+            ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
+            width: 300,
             ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Người tạo',
             dataIndex: 'createdByUsername',
             key: 'createdByUsername',
+            width: 150,
+            align: 'center',
         },
         {
             title: 'Ngày tạo',
             dataIndex: 'createdAt',
             key: 'createdAt',
+            width: 180,
+            align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
         },
         {
             title: 'Thao tác',
             key: 'action',
+            width: 180,
+            align: 'center',
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">

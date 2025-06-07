@@ -85,6 +85,7 @@ const CourseManagement = () => {
             key: 'title',
             width: 180,
             ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Ảnh đại diện',
@@ -103,12 +104,14 @@ const CourseManagement = () => {
             key: 'description',
             width: 200,
             ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Danh mục',
             dataIndex: 'category',
             key: 'category',
             width: 120,
+            align: 'center',
             render: (category, record) => getCategoryName(record),
         },
         {
@@ -117,6 +120,7 @@ const CourseManagement = () => {
             key: 'instructor',
             width: 150,
             ellipsis: true,
+            align: 'center',
             render: (instructor) => instructor ? `${instructor.firstName} ${instructor.lastName} (${instructor.username})` : 'N/A',
         },
         {
@@ -136,6 +140,7 @@ const CourseManagement = () => {
             title: 'Thao tác',
             key: 'action',
             width: 180,
+            align: 'center',
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">

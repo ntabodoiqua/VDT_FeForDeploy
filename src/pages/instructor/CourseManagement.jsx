@@ -98,6 +98,7 @@ const CourseManagement = () => {
             key: 'title',
             width: 200,
             ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Ảnh đại diện',
@@ -116,12 +117,14 @@ const CourseManagement = () => {
             key: 'description',
             width: 250,
             ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Danh mục',
             dataIndex: 'category',
             key: 'category',
             width: 120,
+            align: 'center',
             render: (category, record) => getCategoryName(record),
         },
         {
@@ -141,6 +144,7 @@ const CourseManagement = () => {
             title: 'Thao tác',
             key: 'action',
             width: 200,
+            align: 'center',
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">

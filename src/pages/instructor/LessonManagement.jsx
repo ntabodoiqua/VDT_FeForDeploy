@@ -85,28 +85,39 @@ const LessonManagement = () => {
             title: 'Tên bài học',
             dataIndex: 'title',
             key: 'title',
+            width: 200,
+            ellipsis: true,
+            align: 'center',
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
+            width: 250,
             ellipsis: true,
+            align: 'center',
             render: (description) => description || 'Chưa có mô tả',
         },
         {
             title: 'Số khóa học',
             dataIndex: 'courseCount',
             key: 'courseCount',
+            width: 100,
+            align: 'center',
         },
         {
             title: 'Ngày tạo',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            render: (text) => text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
+            width: 140,
+            align: 'center',
+            render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : 'N/A',
         },
         {
             title: 'Thao tác',
             key: 'action',
+            width: 250,
+            align: 'center',
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">
