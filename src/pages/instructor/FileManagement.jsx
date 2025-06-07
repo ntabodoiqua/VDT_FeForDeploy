@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image, List } from 'antd';
+import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image, List, Space } from 'antd';
 import { DeleteOutlined, ExclamationCircleOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { fetchAllFilesOfUserApi, deleteFileApi, downloadFileWithTokenApi, checkFileUsageApi } from '../../util/api';
 import moment from 'moment';
@@ -318,6 +318,9 @@ const FileManagement = () => {
             title: 'Tên tệp gốc',
             dataIndex: 'originalFileName',
             key: 'originalFileName',
+            width: 250,
+            ellipsis: true,
+            align: 'center',
             render: (text, record) => {
                 if (record.public) {
                     return <a href={getFileUrl(record)} target="_blank" rel="noopener noreferrer">{text}</a>;
@@ -339,17 +342,18 @@ const FileManagement = () => {
         {
             title: 'Xem trước',
             key: 'preview',
+            width: 120,
             align: 'center',
             render: (text, record) => {
                 const fileType = record.contentType || '';
 
                 if (fileType.startsWith('image/')) {
                     if (record.public) {
-                        return <Image width={80} src={getFileUrl(record)} alt={record.originalFileName} />;
+                        return <Image width={60} src={getFileUrl(record)} alt={record.originalFileName} />;
                     } else {
                         return (
-                            <Button onClick={() => downloadFileWithToken(record)}>
-                                <DownloadOutlined /> Tải xuống
+                            <Button size="small" onClick={() => downloadFileWithToken(record)}>
+                                <DownloadOutlined />
                             </Button>
                         );
                     }
@@ -357,7 +361,7 @@ const FileManagement = () => {
 
                 if (fileType === 'application/pdf' || fileType.startsWith('video/')) {
                     return (
-                        <Button onClick={() => handlePreview(record)}>
+                        <Button size="small" onClick={() => handlePreview(record)}>
                             Xem
                         </Button>
                     );
@@ -369,6 +373,7 @@ const FileManagement = () => {
         {
             title: 'Trạng thái sử dụng',
             key: 'usage',
+            width: 140,
             align: 'center',
             render: (text, record) => renderUsageStatus(record.fileName),
         },
@@ -376,42 +381,52 @@ const FileManagement = () => {
             title: 'Loại nội dung',
             dataIndex: 'contentType',
             key: 'contentType',
+            width: 150,
+            align: 'center',
             render: (type) => {
                 if (!type) return <Tag>Không xác định</Tag>;
                 let color = 'geekblue';
                 if (type.startsWith('image')) color = 'green';
                 else if (type.startsWith('application/pdf')) color = 'volcano';
                 else if (type.includes('word')) color = 'blue';
-                return <Tag color={color}>{type}</Tag>;
+                return <Tag color={color}>{type.split('/')[0]}</Tag>;
             },
         },
         {
             title: 'Chế độ',
             dataIndex: 'public',
             key: 'public',
+            width: 100,
+            align: 'center',
             render: isPublic => (isPublic ? <Tag color="success">Công khai</Tag> : <Tag color="error">Riêng tư</Tag>),
         },
         {
             title: 'Ngày tải lên',
             dataIndex: 'uploadedAt',
             key: 'uploadedAt',
-            render: (date) => moment(date).format('DD/MM/YYYY HH:mm:ss'),
+            width: 150,
+            align: 'center',
+            render: (date) => moment(date).format('DD/MM/YYYY HH:mm'),
         },
         {
             title: 'Hành động',
             key: 'action',
+            width: 120,
+            align: 'center',
             render: (text, record) => {
                 const usage = fileUsageCache[record.fileName];
                 const isInUse = usage?.isUsed || usage?.used;
                 
                 return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <Space size="small">
                         <Button
+                            size="small"
                             icon={<DownloadOutlined />}
                             onClick={() => downloadFileWithToken(record)}
                             title="Tải xuống"
                         />
                         <Button
+                            size="small"
                             danger={!isInUse}
                             type={isInUse ? "default" : "primary"}
                             icon={<DeleteOutlined />}
@@ -419,7 +434,7 @@ const FileManagement = () => {
                             title={isInUse ? "Xóa (Đang được sử dụng!)" : "Xóa"}
                             style={isInUse ? { borderColor: '#ff4d4f', color: '#ff4d4f' } : {}}
                         />
-                    </div>
+                    </Space>
                 );
             },
         },
@@ -459,7 +474,11 @@ const FileManagement = () => {
                 loading={loading}
                 rowKey="id"
                 bordered
-                pagination={pagination}
+                pagination={{
+                    ...pagination,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['5', '10', '15', '20'],
+                }}
                 onChange={handleTableChange}
             />
             <Modal
