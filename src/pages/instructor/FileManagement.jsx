@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Table, Button, Modal, notification, Tag, Select, Input, Row, Col, Image } from 'antd';
-import { DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { fetchAllFilesOfUserApi, deleteFileApi } from '../../util/api';
+import { DeleteOutlined, ExclamationCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { fetchAllFilesOfUserApi, deleteFileApi, downloadFileWithTokenApi } from '../../util/api';
 import moment from 'moment';
 import { debounce } from 'lodash';
 
@@ -13,6 +13,7 @@ const FileManagement = () => {
     const [loading, setLoading] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
     const [previewFile, setPreviewFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -84,6 +85,71 @@ const FileManagement = () => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
+    const downloadFileWithToken = async (file) => {
+        try {
+            const response = await downloadFileWithTokenApi(file.fileName);
+            const blob = response.data || response; // response might be wrapped or direct blob
+            
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = file.originalFileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            notification.success({ message: 'File đã được tải xuống thành công' });
+        } catch (error) {
+            notification.error({ 
+                message: 'Lỗi khi tải file', 
+                description: error.response?.data?.message || error.message || 'Không thể tải file' 
+            });
+        }
+    };
+
+    const openFile = (file) => {
+        if (file.public) {
+            const fileUrl = getFileUrl(file);
+            window.open(fileUrl, '_blank');
+        } else {
+            downloadFileWithToken(file);
+        }
+    };
+
+    // Function to handle preview with authentication
+    const handlePreview = async (file) => {
+        try {
+            setPreviewFile(file);
+            setPreviewVisible(true);
+            
+            if (!file.public) {
+                // For private files, download and create a blob URL
+                const response = await downloadFileWithTokenApi(file.fileName);
+                const blob = response.data || response;
+                const url = window.URL.createObjectURL(blob);
+                setPreviewUrl(url);
+            } else {
+                setPreviewUrl(getFileUrl(file));
+            }
+        } catch (error) {
+            notification.error({ 
+                message: 'Lỗi khi tải file preview', 
+                description: error.response?.data?.message || error.message || 'Không thể tải file để xem trước' 
+            });
+        }
+    };
+
+    // Clean up preview URL when modal closes
+    const handleClosePreview = () => {
+        setPreviewVisible(false);
+        setPreviewFile(null);
+        if (previewUrl && previewUrl.startsWith('blob:')) {
+            window.URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(null);
+    };
+
     const getFileUrl = (file) => {
         const baseUrl = import.meta.env.VITE_BACKEND_URL.endsWith('/lms')
             ? import.meta.env.VITE_BACKEND_URL.replace('/lms', '')
@@ -92,12 +158,30 @@ const FileManagement = () => {
         return `${baseUrl}/lms/uploads/${folder}/${file.fileName}`;
     };
 
+
+
     const columns = [
         {
             title: 'Tên tệp gốc',
             dataIndex: 'originalFileName',
             key: 'originalFileName',
-            render: (text, record) => <a href={getFileUrl(record)} target="_blank" rel="noopener noreferrer">{text}</a>,
+            render: (text, record) => {
+                if (record.public) {
+                    return <a href={getFileUrl(record)} target="_blank" rel="noopener noreferrer">{text}</a>;
+                } else {
+                    return (
+                        <span>
+                            <Button 
+                                type="link" 
+                                style={{ padding: 0, height: 'auto' }}
+                                onClick={() => openFile(record)}
+                            >
+                                {text}
+                            </Button>
+                        </span>
+                    );
+                }
+            },
         },
         {
             title: 'Xem trước',
@@ -105,18 +189,22 @@ const FileManagement = () => {
             align: 'center',
             render: (text, record) => {
                 const fileType = record.contentType || '';
-                const fileUrl = getFileUrl(record);
 
                 if (fileType.startsWith('image/')) {
-                    return <Image width={80} src={fileUrl} alt={record.originalFileName} />;
+                    if (record.public) {
+                        return <Image width={80} src={getFileUrl(record)} alt={record.originalFileName} />;
+                    } else {
+                        return (
+                            <Button onClick={() => downloadFileWithToken(record)}>
+                                <DownloadOutlined /> Tải xuống
+                            </Button>
+                        );
+                    }
                 }
 
                 if (fileType === 'application/pdf' || fileType.startsWith('video/')) {
                     return (
-                        <Button onClick={() => {
-                            setPreviewFile(record);
-                            setPreviewVisible(true);
-                        }}>
+                        <Button onClick={() => handlePreview(record)}>
                             Xem
                         </Button>
                     );
@@ -154,13 +242,19 @@ const FileManagement = () => {
             title: 'Hành động',
             key: 'action',
             render: (text, record) => (
-                <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDelete(record.fileName)}
-                >
-                    Xóa
-                </Button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                        icon={<DownloadOutlined />}
+                        onClick={() => downloadFileWithToken(record)}
+                        title="Tải xuống"
+                    />
+                    <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDelete(record.fileName)}
+                        title="Xóa"
+                    />
+                </div>
             ),
         },
     ];
@@ -206,19 +300,21 @@ const FileManagement = () => {
                 open={previewVisible}
                 title={`Xem trước: ${previewFile?.originalFileName}`}
                 footer={null}
-                onCancel={() => {
-                    setPreviewVisible(false);
-                    setPreviewFile(null);
-                }}
+                onCancel={handleClosePreview}
                 width="80%"
                 destroyOnClose
             >
-                {previewFile && (
+                {previewFile && previewUrl && (
                     <iframe
-                        src={getFileUrl(previewFile)}
+                        src={previewUrl}
                         style={{ width: '100%', height: '75vh', border: 'none' }}
                         title={previewFile.originalFileName}
                     ></iframe>
+                )}
+                {previewFile && !previewUrl && (
+                    <div style={{ textAlign: 'center', padding: '50px' }}>
+                        <p>Đang tải file...</p>
+                    </div>
                 )}
             </Modal>
         </div>

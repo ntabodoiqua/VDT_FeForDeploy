@@ -290,11 +290,16 @@ const downloadLessonDocumentApi = (lessonId, documentId) => {
     });
 };
 
-
-
 // API to fetch files for a specific lesson
 const fetchLessonFilesApi = (lessonId) => {
     return axios.get(`/lms/lessons/${lessonId}/files`);
+};
+
+// File download with authentication - using the proper backend endpoint
+const downloadFileWithTokenApi = async (fileName) => {
+    return axios.get(`/lms/files/download/${fileName}`, {
+        responseType: 'blob'
+    });
 };
 
 export {
@@ -361,5 +366,7 @@ export {
     deleteLessonDocumentApi,
     downloadLessonDocumentApi,
     // Student View APIs
-    fetchLessonFilesApi
+    fetchLessonFilesApi,
+    // File download with authentication
+    downloadFileWithTokenApi
 }
