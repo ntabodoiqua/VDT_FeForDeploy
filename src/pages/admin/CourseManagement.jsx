@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, message, Image, Switch, Tooltip, Descriptions, Tag, Upload, DatePicker, Row, Col, Card, Collapse } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined, UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
     fetchCoursesApi,
@@ -19,6 +20,7 @@ const { RangePicker } = DatePicker;
 const { Panel } = Collapse;
 
 const CourseManagement = () => {
+    const navigate = useNavigate();
     const [courses, setCourses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -129,6 +131,13 @@ const CourseManagement = () => {
                         <Button
                             icon={<EyeOutlined />}
                             onClick={() => handleViewDetails(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xem giao diện học viên">
+                        <Button
+                            icon={<UserOutlined />}
+                            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                            onClick={() => navigate(`/admin/student-course-view/${record.id}`)}
                         />
                     </Tooltip>
                     <Tooltip title="Sửa">

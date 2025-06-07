@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { fetchAllSystemLessonsApi, fetchLessonByIdApi, updateLessonApi, createLessonApi, deleteLessonApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
 
 const { TextArea } = Input;
@@ -8,6 +9,7 @@ const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const LessonManagement = () => {
+    const navigate = useNavigate();
     const [lessons, setLessons] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -64,9 +66,10 @@ const LessonManagement = () => {
         },
         {
             title: 'Mô tả',
-            dataIndex: 'content',
-            key: 'content',
+            dataIndex: 'description',
+            key: 'description',
             ellipsis: true,
+            render: (description) => description || 'Chưa có mô tả',
         },
         {
             title: 'Số khóa học',
@@ -89,6 +92,13 @@ const LessonManagement = () => {
                             type="dashed"
                             icon={<EyeOutlined />}
                             onClick={() => handleViewDetails(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xem giao diện học viên">
+                        <Button
+                            icon={<UserOutlined />}
+                            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                            onClick={() => navigate(`/admin/student-lesson-view/${record.id}`)}
                         />
                     </Tooltip>
                     <Tooltip title="Sửa bài học">
@@ -361,11 +371,19 @@ const LessonManagement = () => {
                     </Form.Item>
 
                     <Form.Item
-                        name="content"
-                        label="Mô tả"
-                        rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}
+                        name="description"
+                        label="Mô tả ngắn"
+                        rules={[{ required: false, message: 'Vui lòng nhập mô tả ngắn' }]}
                     >
-                        <TextArea rows={4} />
+                        <TextArea rows={2} placeholder="Mô tả ngắn gọn về bài học..." />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="content"
+                        label="Nội dung chi tiết"
+                        rules={[{ required: true, message: 'Vui lòng nhập nội dung chi tiết' }]}
+                    >
+                        <TextArea rows={6} placeholder="Nội dung chi tiết của bài học..." />
                     </Form.Item>
 
                     <Form.Item>
@@ -415,7 +433,8 @@ const LessonManagement = () => {
                             <Descriptions.Item label="ID">{selectedLessonDetails.id}</Descriptions.Item>
                             <Descriptions.Item label="Tên bài học">{selectedLessonDetails.title}</Descriptions.Item>
                             <Descriptions.Item label="Số khóa học chứa bài học">{selectedLessonDetails.courseCount}</Descriptions.Item>
-                            <Descriptions.Item label="Mô tả (Nội dung)">{selectedLessonDetails.content || 'N/A'}</Descriptions.Item>
+                            <Descriptions.Item label="Mô tả ngắn">{selectedLessonDetails.description || 'Chưa có mô tả'}</Descriptions.Item>
+                            <Descriptions.Item label="Nội dung chi tiết">{selectedLessonDetails.content || 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Ngày tạo">{selectedLessonDetails.createdAt ? new Date(selectedLessonDetails.createdAt).toLocaleString() : 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Cập nhật lần cuối">{selectedLessonDetails.updatedAt ? new Date(selectedLessonDetails.updatedAt).toLocaleString() : 'N/A'}</Descriptions.Item>
                             {selectedLessonDetails.createdBy && (

@@ -114,6 +114,7 @@ const deleteCategoryApi = (categoryId) => {
 
 // API to fetch a single lesson by its ID
 const fetchLessonByIdApi = (lessonId) => {
+    console.log('Fetching lesson with ID:', lessonId);
     return axios.get(`/lms/lessons/${lessonId}`);
 };
 
@@ -289,6 +290,13 @@ const downloadLessonDocumentApi = (lessonId, documentId) => {
     });
 };
 
+
+
+// API to fetch files for a specific lesson
+const fetchLessonFilesApi = (lessonId) => {
+    return axios.get(`/lms/lessons/${lessonId}/files`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -351,5 +359,7 @@ export {
     uploadLessonDocumentApi,
     fetchLessonDocumentsApi,
     deleteLessonDocumentApi,
-    downloadLessonDocumentApi
+    downloadLessonDocumentApi,
+    // Student View APIs
+    fetchLessonFilesApi
 }

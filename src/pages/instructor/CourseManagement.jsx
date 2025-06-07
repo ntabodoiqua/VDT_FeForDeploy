@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useContext } from 'react';
 import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, message, Image, Switch, Tooltip, Descriptions, Tag, Upload, DatePicker, Row, Col, Card, List, Divider } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined, FileTextOutlined, DownloadOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined, FileTextOutlined, DownloadOutlined, UserOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { AuthContext } from '../../components/context/auth.context';
 import {
@@ -23,6 +24,7 @@ const { TextArea } = Input;
 const { RangePicker } = DatePicker;
 
 const CourseManagement = () => {
+    const navigate = useNavigate();
     const { auth } = useContext(AuthContext);
     const [courses, setCourses] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -136,6 +138,13 @@ const CourseManagement = () => {
                         <Button
                             icon={<EyeOutlined />}
                             onClick={() => handleViewDetails(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Xem giao diện học viên">
+                        <Button
+                            icon={<UserOutlined />}
+                            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                            onClick={() => navigate(`/instructor/student-course-view/${record.id}`)}
                         />
                     </Tooltip>
                     <Tooltip title="Sửa">

@@ -15,6 +15,8 @@ import Statistics from './pages/admin/Statistics';
 import CourseLessonManagement from './pages/admin/CourseLessonManagement';
 import EnrollmentManagement from './pages/admin/EnrollmentManagement';
 import ReviewManagement from './pages/admin/ReviewManagement';
+import AdminStudentCourseView from './pages/admin/StudentCourseView';
+import AdminStudentLessonView from './pages/admin/StudentLessonView';
 import InstructorCourseManagement from './pages/instructor/CourseManagement';
 import InstructorLessonManagement from './pages/instructor/LessonManagement';
 import InstructorStatistics from './pages/instructor/Statistics';
@@ -25,6 +27,8 @@ import InstructorReviewManagement from './pages/instructor/ReviewManagement';
 import MyInfoManagement from './pages/instructor/MyInfoManagement';
 import ChangeMyPassword from './pages/instructor/ChangeMyPassword';
 import FileManagement from './pages/instructor/FileManagement';
+import InstructorStudentCourseView from './pages/instructor/StudentCourseView';
+import InstructorStudentLessonView from './pages/instructor/StudentLessonView';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
@@ -55,6 +59,8 @@ function App() {
                     <Route path="course-lesson-management" element={<CourseLessonManagement />} />
                     <Route path="enrollments" element={<EnrollmentManagement />} />
                     <Route path="reviews" element={<ReviewManagement />} />
+                    <Route path="student-course-view/:courseId" element={<AdminStudentCourseView />} />
+                    <Route path="student-lesson-view/:lessonId" element={<AdminStudentLessonView />} />
                 </Route>
 
                 {/* Protected routes for INSTRUCTOR */}
@@ -74,6 +80,8 @@ function App() {
                     <Route path="my-info" element={<MyInfoManagement />} />
                     <Route path="change-password" element={<ChangeMyPassword />} />
                     <Route path="files" element={<FileManagement />} />
+                    <Route path="student-course-view/:courseId" element={<InstructorStudentCourseView />} />
+                    <Route path="student-lesson-view/:lessonId" element={<InstructorStudentLessonView />} />
                 </Route>
 
                 {/* Protected routes for STUDENT */}

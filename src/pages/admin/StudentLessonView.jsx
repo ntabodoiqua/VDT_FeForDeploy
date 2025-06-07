@@ -1,0 +1,536 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+    Card, 
+    Typography, 
+    Space, 
+    Button, 
+    Empty, 
+    Spin, 
+    message, 
+    Divider,
+    Row,
+    Col,
+    Avatar,
+    List,
+    Image,
+    Tag
+} from 'antd';
+import { 
+    ArrowLeftOutlined, 
+    UserOutlined, 
+    ClockCircleOutlined,
+    FileTextOutlined,
+    DownloadOutlined,
+    FilePdfOutlined,
+    PlayCircleOutlined,
+    PictureOutlined
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { fetchLessonByIdApi, fetchLessonFilesApi } from '../../util/api';
+
+const { Title, Text, Paragraph } = Typography;
+
+const StudentLessonView = () => {
+    const { lessonId } = useParams();
+    const navigate = useNavigate();
+    const [lesson, setLesson] = useState(null);
+    const [files, setFiles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filesLoading, setFilesLoading] = useState(false);
+
+    const getDisplayImageUrl = (urlPath) => {
+        if (!urlPath) return null;
+
+        if (urlPath.startsWith('http://') || urlPath.startsWith('https://')) {
+            return urlPath;
+        }
+
+        if (urlPath.startsWith('/')) {
+            const API_IMAGE_BASE_URL = 'http://localhost:8080/lms';
+            return `${API_IMAGE_BASE_URL}${encodeURI(urlPath)}`;
+        }
+        
+        return urlPath; 
+    };
+
+    const getFileIcon = (fileName) => {
+        const extension = fileName?.split('.').pop()?.toLowerCase();
+        switch (extension) {
+            case 'pdf':
+                return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+                return <PictureOutlined style={{ color: '#52c41a' }} />;
+            case 'mp4':
+            case 'avi':
+            case 'mov':
+                return <PlayCircleOutlined style={{ color: '#1890ff' }} />;
+            default:
+                return <FileTextOutlined style={{ color: '#666' }} />;
+        }
+    };
+
+    const fetchLessonDetails = async () => {
+        setLoading(true);
+        try {
+            const response = await fetchLessonByIdApi(lessonId);
+            if (response.code === 1000 && response.result) {
+                setLesson(response.result);
+                await fetchLessonFiles();
+            } else {
+                message.error(response.message || 'Không thể tải thông tin bài học');
+            }
+        } catch (error) {
+            console.error('Error fetching lesson details:', error);
+            // Nếu lesson ID không tồn tại, hiển thị thông báo lỗi chi tiết hơn
+            if (error.code === 1006 || (error.response && error.response.status === 404)) {
+                message.error('Bài học không tồn tại hoặc đã bị xóa');
+            } else {
+                message.error('Không thể tải thông tin bài học: ' + (error.message || 'Lỗi không xác định'));
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchLessonFiles = async () => {
+        setFilesLoading(true);
+        try {
+            // Assuming there's an API to fetch lesson files
+            // Replace with actual API call
+            const response = await fetchLessonFilesApi(lessonId);
+            if (response.code === 1000 && response.result) {
+                setFiles(response.result);
+            } else {
+                // If no files API available, set empty array
+                setFiles([]);
+            }
+        } catch (error) {
+            // If API doesn't exist, just set empty array
+            setFiles([]);
+        } finally {
+            setFilesLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (lessonId) {
+            fetchLessonDetails();
+        }
+    }, [lessonId]);
+
+    const handleBack = () => {
+        navigate(-1);
+    };
+
+    const handleFileDownload = (file) => {
+        const fileUrl = getDisplayImageUrl(file.filePath);
+        if (fileUrl) {
+            window.open(fileUrl, '_blank');
+        }
+    };
+
+    const renderLessonContent = () => {
+        if (!lesson.content) {
+            return <Text style={{ color: '#666', fontStyle: 'italic' }}>Chưa có nội dung bài học</Text>;
+        }
+
+        // Check if content contains HTML tags
+        const isHtml = /<[a-z][\s\S]*>/i.test(lesson.content);
+        
+        if (isHtml) {
+            return (
+                <div 
+                    dangerouslySetInnerHTML={{ __html: lesson.content }}
+                    style={{ 
+                        lineHeight: '1.8',
+                        fontSize: '16px',
+                        color: '#333'
+                    }}
+                />
+            );
+        } else {
+            return (
+                <Paragraph style={{ 
+                    fontSize: '16px',
+                    lineHeight: '1.8',
+                    color: '#333',
+                    whiteSpace: 'pre-wrap'
+                }}>
+                    {lesson.content}
+                </Paragraph>
+            );
+        }
+    };
+
+    if (loading) {
+        return (
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                minHeight: '400px' 
+            }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    if (!lesson) {
+        return (
+            <div style={{ padding: '40px' }}>
+                <Empty 
+                    description="Không tìm thấy thông tin bài học"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                >
+                    <Button type="primary" onClick={handleBack}>
+                        Quay lại
+                    </Button>
+                </Empty>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+            {/* Header với nút quay lại */}
+            <div style={{ marginBottom: '24px' }}>
+                <Button 
+                    icon={<ArrowLeftOutlined />} 
+                    onClick={handleBack}
+                    style={{ marginBottom: '16px' }}
+                >
+                    Quay lại
+                </Button>
+                <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+                    Xem bài học dành cho học viên
+                </Title>
+            </div>
+
+            <Row gutter={[24, 24]}>
+                {/* Cột trái - Nội dung bài học */}
+                <Col xs={24} lg={16}>
+                    <Card
+                        style={{
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        }}
+                        bodyStyle={{ padding: '32px' }}
+                    >
+                        {/* Header bài học */}
+                        <div style={{ marginBottom: '32px' }}>
+                            <Title level={1} style={{ 
+                                fontSize: '28px', 
+                                fontWeight: 'bold',
+                                color: '#1890ff',
+                                marginBottom: '16px'
+                            }}>
+                                {lesson.title}
+                            </Title>
+
+                            {/* Mô tả bài học */}
+                            {lesson.description && (
+                                <div style={{ 
+                                    marginBottom: '24px',
+                                    padding: '16px',
+                                    backgroundColor: '#f6ffed',
+                                    border: '1px solid #b7eb8f',
+                                    borderRadius: '8px'
+                                }}>
+                                    <Text style={{ 
+                                        fontSize: '16px',
+                                        lineHeight: '1.6',
+                                        color: '#52c41a',
+                                        fontStyle: 'italic'
+                                    }}>
+                                        {lesson.description}
+                                    </Text>
+                                </div>
+                            )}
+
+                            {/* Thông tin cơ bản */}
+                            <Row gutter={[24, 16]} style={{ marginBottom: '24px' }}>
+                                <Col xs={24} sm={12}>
+                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <UserOutlined style={{ color: '#1890ff' }} />
+                                            <Text strong>Giảng viên:</Text>
+                                            <Text style={{ color: '#666' }}>
+                                                {lesson.instructor ? 
+                                                    `${lesson.instructor.firstName} ${lesson.instructor.lastName}` : 
+                                                    'Chưa cập nhật'
+                                                }
+                                            </Text>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <ClockCircleOutlined style={{ color: '#faad14' }} />
+                                            <Text strong>Cập nhật:</Text>
+                                            <Text style={{ color: '#666' }}>
+                                                {lesson.updatedAt ? 
+                                                    dayjs(lesson.updatedAt).format('DD/MM/YYYY HH:mm') : 
+                                                    'Chưa cập nhật'
+                                                }
+                                            </Text>
+                                        </div>
+                                    </Space>
+                                </Col>
+                                
+                                <Col xs={24} sm={12}>
+                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                        {lesson.course && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <FileTextOutlined style={{ color: '#52c41a' }} />
+                                                <Text strong>Khóa học:</Text>
+                                                <Text style={{ color: '#666' }}>
+                                                    {lesson.course.title}
+                                                </Text>
+                                            </div>
+                                        )}
+                                        
+                                        {lesson.displayOrder && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Text strong>Thứ tự:</Text>
+                                                <Tag color="blue">Bài {lesson.displayOrder}</Tag>
+                                            </div>
+                                        )}
+                                    </Space>
+                                </Col>
+                            </Row>
+                        </div>
+
+                        <Divider />
+
+                        {/* Nội dung bài học */}
+                        <div style={{ marginBottom: '32px' }}>
+                            <Title level={3} style={{ 
+                                color: '#1890ff',
+                                marginBottom: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <FileTextOutlined />
+                                Nội dung bài học
+                            </Title>
+                            
+                            <Card 
+                                style={{ 
+                                    backgroundColor: '#fafafa',
+                                    border: '1px solid #f0f0f0'
+                                }}
+                                bodyStyle={{ padding: '24px' }}
+                            >
+                                {renderLessonContent()}
+                            </Card>
+                        </div>
+
+                        {/* Hiển thị video hoặc hình ảnh nếu có */}
+                        {lesson.videoUrl && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <Title level={3} style={{ 
+                                    color: '#1890ff',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <PlayCircleOutlined />
+                                    Video bài học
+                                </Title>
+                                
+                                <Card style={{ backgroundColor: '#fafafa' }}>
+                                    <video
+                                        controls
+                                        style={{ width: '100%', maxHeight: '400px' }}
+                                        src={getDisplayImageUrl(lesson.videoUrl)}
+                                    >
+                                        Trình duyệt của bạn không hỗ trợ phát video.
+                                    </video>
+                                </Card>
+                            </div>
+                        )}
+
+                        {lesson.imageUrl && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <Title level={3} style={{ 
+                                    color: '#1890ff',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <PictureOutlined />
+                                    Hình ảnh minh họa
+                                </Title>
+                                
+                                <Card style={{ backgroundColor: '#fafafa', textAlign: 'center' }}>
+                                    <Image
+                                        src={getDisplayImageUrl(lesson.imageUrl)}
+                                        alt={lesson.title}
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '400px',
+                                            borderRadius: '8px'
+                                        }}
+                                    />
+                                </Card>
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+
+                {/* Cột phải - Tài liệu liên quan */}
+                <Col xs={24} lg={8}>
+                    <Card
+                        title={
+                            <Space>
+                                <FileTextOutlined style={{ color: '#1890ff' }} />
+                                <span>Tài liệu liên quan</span>
+                            </Space>
+                        }
+                        style={{
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        }}
+                        bodyStyle={{ padding: '16px' }}
+                    >
+                        {filesLoading ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}>
+                                <Spin />
+                            </div>
+                        ) : files.length === 0 ? (
+                            <Empty 
+                                description="Chưa có tài liệu nào"
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            />
+                        ) : (
+                            <List
+                                itemLayout="horizontal"
+                                dataSource={files}
+                                renderItem={(file) => (
+                                    <List.Item
+                                        style={{
+                                            padding: '12px 16px',
+                                            margin: '8px 0',
+                                            backgroundColor: '#fafafa',
+                                            borderRadius: '8px',
+                                            border: '1px solid #f0f0f0',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#e6f7ff';
+                                            e.currentTarget.style.borderColor = '#1890ff';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#fafafa';
+                                            e.currentTarget.style.borderColor = '#f0f0f0';
+                                        }}
+                                        onClick={() => handleFileDownload(file)}
+                                        actions={[
+                                            <Button
+                                                type="text"
+                                                icon={<DownloadOutlined />}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleFileDownload(file);
+                                                }}
+                                            />
+                                        ]}
+                                    >
+                                        <List.Item.Meta
+                                            avatar={
+                                                <Avatar 
+                                                    icon={getFileIcon(file.fileName)}
+                                                    style={{ backgroundColor: 'transparent' }}
+                                                />
+                                            }
+                                            title={
+                                                <Text 
+                                                    strong 
+                                                    style={{ 
+                                                        fontSize: '14px',
+                                                        color: '#1890ff'
+                                                    }}
+                                                >
+                                                    {file.fileName || file.name}
+                                                </Text>
+                                            }
+                                            description={
+                                                <Text 
+                                                    style={{ 
+                                                        fontSize: '12px',
+                                                        color: '#666'
+                                                    }}
+                                                >
+                                                    {file.description || 'Tài liệu học tập'}
+                                                </Text>
+                                            }
+                                        />
+                                    </List.Item>
+                                )}
+                            />
+                        )}
+
+                        {/* Sample documents when no API available */}
+                        {files.length === 0 && !filesLoading && (
+                            <div style={{ padding: '16px' }}>
+                                <Text style={{ color: '#666', fontSize: '14px', fontStyle: 'italic' }}>
+                                    * Tài liệu sẽ được hiển thị ở đây khi có API hỗ trợ
+                                </Text>
+                                
+                                {/* Demo files */}
+                                <List
+                                    style={{ marginTop: '16px' }}
+                                    itemLayout="horizontal"
+                                    dataSource={[
+                                        { id: 1, name: 'Bài giảng.pdf', type: 'pdf', description: 'Tài liệu chính của bài học' },
+                                        { id: 2, name: 'Slide thuyết trình.pptx', type: 'presentation', description: 'Slide bài giảng' },
+                                        { id: 3, name: 'Bài tập thực hành.docx', type: 'document', description: 'Bài tập và hướng dẫn' }
+                                    ]}
+                                    renderItem={(file) => (
+                                        <List.Item
+                                            style={{
+                                                padding: '8px 12px',
+                                                margin: '4px 0',
+                                                backgroundColor: '#f8f8f8',
+                                                borderRadius: '6px',
+                                                opacity: 0.7
+                                            }}
+                                        >
+                                            <List.Item.Meta
+                                                avatar={
+                                                    <Avatar 
+                                                        icon={getFileIcon(file.name)}
+                                                        style={{ backgroundColor: 'transparent' }}
+                                                        size="small"
+                                                    />
+                                                }
+                                                title={
+                                                    <Text style={{ fontSize: '13px', color: '#999' }}>
+                                                        {file.name}
+                                                    </Text>
+                                                }
+                                                description={
+                                                    <Text style={{ fontSize: '11px', color: '#ccc' }}>
+                                                        {file.description}
+                                                    </Text>
+                                                }
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+};
+
+export default StudentLessonView; 
