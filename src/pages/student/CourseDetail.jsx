@@ -55,21 +55,29 @@ const CourseDetail = () => {
                     title: 'Giới thiệu về React',
                     duration: '30 phút',
                     status: 'completed',
-                    videoUrl: 'https://example.com/video1'
+                    documents: [
+                        { id: 1, title: 'Slide bài giảng', type: 'pdf' },
+                        { id: 2, title: 'Video hướng dẫn', type: 'video' }
+                    ]
                 },
                 {
                     id: 2,
                     title: 'Components và Props',
                     duration: '45 phút',
                     status: 'in-progress',
-                    videoUrl: 'https://example.com/video2'
+                    documents: [
+                        { id: 3, title: 'Bài tập thực hành', type: 'pdf' },
+                        { id: 4, title: 'Code demo', type: 'file' }
+                    ]
                 },
                 {
                     id: 3,
                     title: 'State và Lifecycle',
                     duration: '60 phút',
                     status: 'locked',
-                    videoUrl: 'https://example.com/video3'
+                    documents: [
+                        { id: 5, title: 'Tài liệu lý thuyết', type: 'pdf' }
+                    ]
                 }
             ]);
         } catch (error) {
@@ -194,14 +202,18 @@ const CourseDetail = () => {
             >
                 {selectedLesson && (
                     <div>
-                        <iframe
-                            width="100%"
-                            height="400"
-                            src={selectedLesson.videoUrl}
-                            title={selectedLesson.title}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
+                        <Title level={4}>Tài liệu bài học</Title>
+                        <List
+                            dataSource={selectedLesson.documents}
+                            renderItem={doc => (
+                                <List.Item>
+                                    <List.Item.Meta
+                                        title={doc.title}
+                                        description={`Loại: ${doc.type}`}
+                                    />
+                                    <Button type="link">Tải xuống</Button>
+                                </List.Item>
+                            )}
                         />
                     </div>
                 )}

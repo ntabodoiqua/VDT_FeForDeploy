@@ -927,16 +927,7 @@ const CourseLessonManagement = () => {
                             <Descriptions.Item label="ID (Bài học)">{fetchedLessonDetails.lesson?.id || 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Tên bài học">{fetchedLessonDetails.lesson?.title || 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Mô tả (Nội dung)">{fetchedLessonDetails.lesson?.content || 'N/A'}</Descriptions.Item>
-                            <Descriptions.Item label="Video URL">
-                                {fetchedLessonDetails.lesson?.videoUrl ? 
-                                    <a href={fetchedLessonDetails.lesson.videoUrl} target="_blank" rel="noopener noreferrer">{fetchedLessonDetails.lesson.videoUrl}</a> 
-                                    : 'N/A'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Tài liệu đính kèm">
-                                {fetchedLessonDetails.lesson?.attachmentUrl ? 
-                                    <a href={fetchedLessonDetails.lesson.attachmentUrl} target="_blank" rel="noopener noreferrer">{fetchedLessonDetails.lesson.attachmentUrl}</a> 
-                                    : 'N/A'}
-                            </Descriptions.Item>
+
                             
                             {/* Course-Context Specific Details - from fetchedLessonDetails directly */}
                             <Descriptions.Item label="Thứ tự trong khóa học">

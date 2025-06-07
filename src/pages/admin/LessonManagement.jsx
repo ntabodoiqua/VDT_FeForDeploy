@@ -300,23 +300,7 @@ const LessonManagement = () => {
                             <RangePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
-                    <Col span={4}>
-                        <Form.Item name="hasVideo" label="Có Video">
-                            <Select placeholder="Tất cả" allowClear>
-                                <Option value={true}>Có</Option>
-                                <Option value={false}>Không</Option>
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                        <Form.Item name="hasAttachment" label="Có tài liệu">
-                            <Select placeholder="Tất cả" allowClear>
-                                <Option value={true}>Có</Option>
-                                <Option value={false}>Không</Option>
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                    <Col span={8} style={{ textAlign: 'right', alignSelf: 'flex-end', paddingBottom: '8px' }}>
+                    <Col span={16} style={{ textAlign: 'right', alignSelf: 'flex-end', paddingBottom: '8px' }}>
                         <Space>
                             <Button type="primary" htmlType="submit">
                                 Lọc
@@ -384,22 +368,6 @@ const LessonManagement = () => {
                         <TextArea rows={4} />
                     </Form.Item>
 
-                    <Form.Item
-                        name="videoUrl"
-                        label="Video URL"
-                        rules={[{ type: 'url', message: 'URL không hợp lệ' }]}
-                    >
-                        <Input placeholder="https://example.com/video.mp4" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="attachmentUrl"
-                        label="URL tài liệu đính kèm"
-                        rules={[{ type: 'url', message: 'URL không hợp lệ' }]}
-                    >
-                        <Input placeholder="https://example.com/attachment.pdf" />
-                    </Form.Item>
-
                     <Form.Item>
                         <Space>
                             <Button type="primary" htmlType="submit">
@@ -448,12 +416,6 @@ const LessonManagement = () => {
                             <Descriptions.Item label="Tên bài học">{selectedLessonDetails.title}</Descriptions.Item>
                             <Descriptions.Item label="Số khóa học chứa bài học">{selectedLessonDetails.courseCount}</Descriptions.Item>
                             <Descriptions.Item label="Mô tả (Nội dung)">{selectedLessonDetails.content || 'N/A'}</Descriptions.Item>
-                            <Descriptions.Item label="Video URL">
-                                {selectedLessonDetails.videoUrl ? <a href={selectedLessonDetails.videoUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.videoUrl}</a> : 'N/A'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Tài liệu đính kèm">
-                                {selectedLessonDetails.attachmentUrl ? <a href={selectedLessonDetails.attachmentUrl} target="_blank" rel="noopener noreferrer">{selectedLessonDetails.attachmentUrl}</a> : 'N/A'}
-                            </Descriptions.Item>
                             <Descriptions.Item label="Ngày tạo">{selectedLessonDetails.createdAt ? new Date(selectedLessonDetails.createdAt).toLocaleString() : 'N/A'}</Descriptions.Item>
                             <Descriptions.Item label="Cập nhật lần cuối">{selectedLessonDetails.updatedAt ? new Date(selectedLessonDetails.updatedAt).toLocaleString() : 'N/A'}</Descriptions.Item>
                             {selectedLessonDetails.createdBy && (
