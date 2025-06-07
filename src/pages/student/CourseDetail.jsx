@@ -18,7 +18,7 @@ import {
 } from '@ant-design/icons';
 
 const { Content, Sider } = Layout;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 const CourseDetail = () => {
     const { courseId } = useParams();
@@ -208,8 +208,28 @@ const CourseDetail = () => {
                             renderItem={doc => (
                                 <List.Item>
                                     <List.Item.Meta
-                                        title={doc.title}
-                                        description={`Loại: ${doc.type}`}
+                                        title={
+                                            <div>
+                                                <Text strong style={{ fontSize: '14px', color: '#1890ff', display: 'block' }}>
+                                                    {doc.title || 'Tài liệu không có tiêu đề'}
+                                                </Text>
+                                                <Text style={{ fontSize: '11px', color: '#999' }}>
+                                                    File: {doc.fileName || `tài-liệu.${doc.type}`}
+                                                </Text>
+                                            </div>
+                                        }
+                                        description={
+                                            <div>
+                                                {doc.description && (
+                                                    <Text style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>
+                                                        {doc.description}
+                                                    </Text>
+                                                )}
+                                                <Text style={{ fontSize: '11px', color: '#999' }}>
+                                                    Loại: {doc.type}
+                                                </Text>
+                                            </div>
+                                        }
                                     />
                                     <Button type="link">Tải xuống</Button>
                                 </List.Item>

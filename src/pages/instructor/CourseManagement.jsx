@@ -96,32 +96,40 @@ const CourseManagement = () => {
             title: 'Tên khóa học',
             dataIndex: 'title',
             key: 'title',
+            width: 200,
+            ellipsis: true,
         },
         {
             title: 'Ảnh đại diện',
             dataIndex: 'thumbnailUrl',
             key: 'thumbnail',
+            width: 80,
+            align: 'center',
             render: (thumbnailUrl) => {
                 const fullUrl = getDisplayImageUrl(thumbnailUrl);
-                return fullUrl ? <Image width={50} src={fullUrl} alt="Thumbnail" /> : 'N/A';
+                return fullUrl ? <Image width={40} src={fullUrl} alt="Thumbnail" /> : 'N/A';
             }
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
+            width: 250,
             ellipsis: true,
         },
         {
             title: 'Danh mục',
             dataIndex: 'category',
             key: 'category',
+            width: 120,
             render: (category, record) => getCategoryName(record),
         },
         {
             title: 'Trạng thái',
             dataIndex: 'isActive',
             key: 'isActive',
+            width: 100,
+            align: 'center',
             render: (isActive, record) => (
                 <Switch
                     checked={isActive}
@@ -132,6 +140,7 @@ const CourseManagement = () => {
         {
             title: 'Thao tác',
             key: 'action',
+            width: 200,
             render: (_, record) => (
                 <Space size="middle">
                     <Tooltip title="Xem chi tiết">
