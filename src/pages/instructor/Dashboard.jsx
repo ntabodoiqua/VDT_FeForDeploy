@@ -163,7 +163,18 @@ const InstructorDashboard = () => {
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider width={280} theme="light">
+            <Sider 
+                width={280} 
+                theme="light"
+                style={{
+                    position: 'fixed',
+                    height: '100vh',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1000
+                }}
+            >
                 <div 
                     style={{
                         height: '64px',
@@ -185,7 +196,7 @@ const InstructorDashboard = () => {
                     style={{ height: '100%', borderRight: 0 }}
                 />
             </Sider>
-            <Layout>
+            <Layout style={{ marginLeft: 280 }}>
                 <Header style={{ background: '#fff', padding: 0, paddingLeft: 16 }}>
                     <h2>Trang giảng viên</h2>
                 </Header>

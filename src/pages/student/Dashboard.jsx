@@ -70,7 +70,18 @@ const StudentDashboard = () => {
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider width={250} theme="light">
+            <Sider 
+                width={250} 
+                theme="light"
+                style={{
+                    position: 'fixed',
+                    height: '100vh',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1000
+                }}
+            >
                 <div style={{ height: 32, margin: 16, background: 'rgba(0, 0, 0, 0.2)' }} />
                 <Menu
                     mode="inline"
@@ -79,7 +90,7 @@ const StudentDashboard = () => {
                     style={{ height: '100%', borderRight: 0 }}
                 />
             </Sider>
-            <Layout>
+            <Layout style={{ marginLeft: 250 }}>
                 <Header style={{ background: '#fff', padding: 0, paddingLeft: 16 }}>
                     <h2>Trang học viên</h2>
                 </Header>
