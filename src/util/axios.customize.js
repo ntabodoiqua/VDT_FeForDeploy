@@ -2,7 +2,10 @@ import axios from "axios";
 
 // Set config defaults when creating the instance
 const instance = axios.create({
-    baseURL: import.meta.env.VITE_BACKEND_URL
+    baseURL: import.meta.env.VITE_BACKEND_URL,
+    timeout: 60000, // 1 minute default timeout
+    maxContentLength: 500 * 1024 * 1024, // 500MB max content length
+    maxBodyLength: 500 * 1024 * 1024 // 500MB max body length
 });
 
 let isRefreshing = false;

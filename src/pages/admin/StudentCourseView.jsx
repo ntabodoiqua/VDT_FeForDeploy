@@ -145,9 +145,11 @@ const StudentCourseView = () => {
                 if (Array.isArray(lessonsData)) {
                     // Debug: log lesson structure
                     console.log('Lessons data structure:', lessonsData[0]);
-                    // Sắp xếp bài học theo thứ tự
+                    // Sắp xếp bài học theo orderIndex
                     const sortedLessons = lessonsData.sort((a, b) => {
-                        return (a.displayOrder || 0) - (b.displayOrder || 0);
+                        const orderA = a.orderIndex || a.displayOrder || 0;
+                        const orderB = b.orderIndex || b.displayOrder || 0;
+                        return orderA - orderB;
                     });
                     setLessons(sortedLessons);
                 } else {
@@ -603,19 +605,30 @@ const StudentCourseView = () => {
                                                                         fontSize: '14px'
                                                                     }}
                                                                 >
-                                                                    {index + 1}
+                                                                    {lesson.orderIndex || (index + 1)}
                                                                 </Avatar>
                                                             }
                                                             title={
-                                                                <Text 
-                                                                    strong 
-                                                                    style={{ 
-                                                                        fontSize: '14px',
-                                                                        color: '#1890ff'
-                                                                    }}
-                                                                >
-                                                                    {lesson.lesson?.title || lesson.title || 'Chưa có tiêu đề'}
-                                                                </Text>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    <Text 
+                                                                        style={{ 
+                                                                            fontSize: '12px',
+                                                                            color: '#999',
+                                                                            minWidth: '30px'
+                                                                        }}
+                                                                    >
+                                                                        #{lesson.orderIndex || (index + 1)}
+                                                                    </Text>
+                                                                    <Text 
+                                                                        strong 
+                                                                        style={{ 
+                                                                            fontSize: '14px',
+                                                                            color: '#1890ff'
+                                                                        }}
+                                                                    >
+                                                                        {lesson.lesson?.title || lesson.title || 'Chưa có tiêu đề'}
+                                                                    </Text>
+                                                                </div>
                                                             }
                                                             description={
                                                                 <Text 

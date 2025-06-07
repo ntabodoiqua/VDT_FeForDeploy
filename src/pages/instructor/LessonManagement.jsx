@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, List, Upload, Divider } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined, UserOutlined } from '@ant-design/icons';
+import LargeFileUpload from '../../components/Upload/LargeFileUpload';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { AuthContext } from '../../components/context/auth.context';
@@ -46,6 +47,9 @@ const LessonManagement = () => {
     const [uploadDocumentModalVisible, setUploadDocumentModalVisible] = useState(false);
     const [documentForm] = Form.useForm();
     const [documentFileList, setDocumentFileList] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploading, setUploading] = useState(false);
+    const [showProgress, setShowProgress] = useState(false);
     const [loadingDocuments, setLoadingDocuments] = useState(false);
 
     const handleFilterSubmit = (values) => {
@@ -323,20 +327,56 @@ const LessonManagement = () => {
         })], { type: 'application/json' }));
         formData.append('file', documentFileList[0]);
 
+        setUploading(true);
+        setShowProgress(true);
+        setUploadProgress(0);
+
         try {
-            const response = await uploadLessonDocumentApi(selectedLessonForDocs.id, formData);
+            const response = await uploadLessonDocumentApi(
+                selectedLessonForDocs.id, 
+                formData, 
+                (progressEvent) => {
+                    const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(progress);
+                }
+            );
+            
             if (response && response.result) {
                 message.success('Tài liệu đã được tải lên thành công');
                 setUploadDocumentModalVisible(false);
-                documentForm.resetFields();
-                setDocumentFileList([]);
+                resetUploadState();
                 await fetchLessonDocuments(selectedLessonForDocs.id);
             } else {
                 message.error('Không thể tải lên tài liệu');
             }
         } catch (error) {
-            message.error('Lỗi khi tải lên tài liệu: ' + error.message);
+            console.error('Upload error:', error);
+            let errorMessage = 'Lỗi khi tải lên tài liệu';
+            
+            if (error.code === 'ECONNABORTED') {
+                errorMessage = 'Tải lên bị timeout. Vui lòng thử lại với file nhỏ hơn hoặc kiểm tra kết nối mạng.';
+            } else if (error.response) {
+                errorMessage = error.response.data?.message || `Lỗi server: ${error.response.status}`;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            message.error(errorMessage);
+        } finally {
+            setUploading(false);
         }
+    };
+
+    const resetUploadState = () => {
+        documentForm.resetFields();
+        setDocumentFileList([]);
+        setUploadProgress(0);
+        setShowProgress(false);
+        setUploading(false);
+    };
+
+    const handleFileSelect = (file) => {
+        setDocumentFileList([file]);
     };
 
     const handleDeleteLessonDocument = async (documentId) => {
@@ -652,12 +692,15 @@ const LessonManagement = () => {
                 title="Tải lên tài liệu bài học"
                 open={uploadDocumentModalVisible}
                 onCancel={() => {
-                    setUploadDocumentModalVisible(false);
-                    documentForm.resetFields();
-                    setDocumentFileList([]);
+                    if (!uploading) {
+                        setUploadDocumentModalVisible(false);
+                        resetUploadState();
+                    }
                 }}
                 footer={null}
-                width={600}
+                width={700}
+                closable={!uploading}
+                maskClosable={!uploading}
             >
                 <Form
                     form={documentForm}
@@ -669,45 +712,49 @@ const LessonManagement = () => {
                         label="Tiêu đề tài liệu"
                         rules={[{ required: true, message: 'Vui lòng nhập tiêu đề tài liệu' }]}
                     >
-                        <Input />
+                        <Input disabled={uploading} />
                     </Form.Item>
 
                     <Form.Item
                         name="description"
                         label="Mô tả"
                     >
-                        <TextArea rows={3} />
+                        <TextArea rows={3} disabled={uploading} />
                     </Form.Item>
 
                     <Form.Item
                         label="File tài liệu"
                         rules={[{ required: true, message: 'Vui lòng chọn file' }]}
                     >
-                        <Upload
-                            beforeUpload={(file) => {
-                                setDocumentFileList([file]);
-                                return false;
-                            }}
-                            onRemove={() => {
-                                setDocumentFileList([]);
-                            }}
-                            fileList={documentFileList}
-                            maxCount={1}
-                        >
-                            <Button icon={<UploadOutlined />}>Chọn file</Button>
-                        </Upload>
+                        <LargeFileUpload
+                            onFileSelect={handleFileSelect}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv"
+                            maxSizeMB={250}
+                            uploading={uploading}
+                            uploadProgress={uploadProgress}
+                            showProgress={showProgress}
+                        />
                     </Form.Item>
 
                     <Form.Item>
                         <Space>
-                            <Button type="primary" htmlType="submit">
-                                Tải lên
+                            <Button 
+                                type="primary" 
+                                htmlType="submit"
+                                loading={uploading}
+                                disabled={!documentFileList.length || uploading}
+                            >
+                                {uploading ? 'Đang tải lên...' : 'Tải lên'}
                             </Button>
-                            <Button onClick={() => {
-                                setUploadDocumentModalVisible(false);
-                                documentForm.resetFields();
-                                setDocumentFileList([]);
-                            }}>
+                            <Button 
+                                onClick={() => {
+                                    if (!uploading) {
+                                        setUploadDocumentModalVisible(false);
+                                        resetUploadState();
+                                    }
+                                }}
+                                disabled={uploading}
+                            >
                                 Hủy
                             </Button>
                         </Space>

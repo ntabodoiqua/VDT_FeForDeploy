@@ -65,6 +65,15 @@ const StudentLessonView = () => {
             case 'png':
             case 'gif':
                 return <PictureOutlined style={{ color: '#52c41a' }} />;
+            case 'doc':
+            case 'docx':
+                return <FileTextOutlined style={{ color: '#1890ff' }} />;
+            case 'xls':
+            case 'xlsx':
+                return <FileTextOutlined style={{ color: '#52c41a' }} />;
+            case 'ppt':
+            case 'pptx':
+                return <FileTextOutlined style={{ color: '#faad14' }} />;
             case 'mp4':
             case 'avi':
             case 'mov':
@@ -72,6 +81,32 @@ const StudentLessonView = () => {
             default:
                 return <FileTextOutlined style={{ color: '#666' }} />;
         }
+    };
+
+    const getOriginalFileName = (fileName) => {
+        if (!fileName) return fileName;
+        
+        // Loại bỏ UUID prefix (format: UUID_originalname.ext)
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i;
+        return fileName.replace(uuidPattern, '');
+    };
+
+    const truncateFileName = (fileName, maxLength = 30) => {
+        const originalName = getOriginalFileName(fileName);
+        
+        if (!originalName || originalName.length <= maxLength) {
+            return originalName;
+        }
+        
+        const extension = originalName.split('.').pop();
+        const nameWithoutExtension = originalName.substring(0, originalName.lastIndexOf('.'));
+        
+        if (nameWithoutExtension.length <= maxLength - extension.length - 4) {
+            return originalName;
+        }
+        
+        const truncatedName = nameWithoutExtension.substring(0, maxLength - extension.length - 4);
+        return `${truncatedName}...${extension}`;
     };
 
     const fetchLessonDetails = async () => {
@@ -453,41 +488,68 @@ const StudentLessonView = () => {
                                         actions={[
                                             <Button
                                                 type="text"
+                                                size="small"
                                                 icon={<DownloadOutlined />}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleFileDownload(file);
                                                 }}
+                                                style={{ color: '#1890ff' }}
                                             />
                                         ]}
                                     >
                                         <List.Item.Meta
-                                            avatar={
-                                                <Avatar 
-                                                    icon={getFileIcon(file.fileName)}
-                                                    style={{ backgroundColor: 'transparent' }}
-                                                />
-                                            }
+                                            avatar={getFileIcon(file.fileName || file.originalFileName)}
                                             title={
-                                                <Text 
-                                                    strong 
-                                                    style={{ 
-                                                        fontSize: '14px',
-                                                        color: '#1890ff'
-                                                    }}
-                                                >
-                                                    {file.fileName || file.originalFileName || file.title || file.name}
-                                                </Text>
+                                                <div>
+                                                    <Text 
+                                                        strong 
+                                                        style={{ 
+                                                            fontSize: '14px',
+                                                            color: '#1890ff',
+                                                            wordBreak: 'break-word',
+                                                            display: 'block'
+                                                        }}
+                                                    >
+                                                        {file.title || 'Tài liệu không có tiêu đề'}
+                                                    </Text>
+                                                    <Text 
+                                                        style={{ 
+                                                            fontSize: '11px',
+                                                            color: '#999',
+                                                            wordBreak: 'break-word'
+                                                        }}
+                                                    >
+                                                        File: {truncateFileName(file.fileName || file.originalFileName)}
+                                                    </Text>
+                                                </div>
                                             }
                                             description={
-                                                <Text 
-                                                    style={{ 
-                                                        fontSize: '12px',
-                                                        color: '#666'
-                                                    }}
-                                                >
-                                                    {file.description || 'Tài liệu học tập'}
-                                                </Text>
+                                                <div>
+                                                    {file.description && (
+                                                        <Text 
+                                                            style={{ 
+                                                                fontSize: '12px',
+                                                                color: '#666',
+                                                                display: 'block',
+                                                                marginBottom: '4px'
+                                                            }}
+                                                        >
+                                                            {file.description}
+                                                        </Text>
+                                                    )}
+                                                    <Text 
+                                                        style={{ 
+                                                            fontSize: '11px',
+                                                            color: '#999'
+                                                        }}
+                                                    >
+                                                        Kích thước: {file.fileSize ? 
+                                                            `${(file.fileSize / 1024 / 1024).toFixed(2)} MB` : 
+                                                            'Không rõ'
+                                                        }
+                                                    </Text>
+                                                </div>
                                             }
                                         />
                                     </List.Item>
@@ -495,56 +557,7 @@ const StudentLessonView = () => {
                             />
                         )}
 
-                        {/* Sample documents when no API available */}
-                        {files.length === 0 && !filesLoading && (
-                            <div style={{ padding: '16px' }}>
-                                <Text style={{ color: '#666', fontSize: '14px', fontStyle: 'italic' }}>
-                                    * Tài liệu sẽ được hiển thị ở đây khi có API hỗ trợ
-                                </Text>
-                                
-                                {/* Demo files */}
-                                <List
-                                    style={{ marginTop: '16px' }}
-                                    itemLayout="horizontal"
-                                    dataSource={[
-                                        { id: 1, name: 'Bài giảng.pdf', type: 'pdf', description: 'Tài liệu chính của bài học' },
-                                        { id: 2, name: 'Slide thuyết trình.pptx', type: 'presentation', description: 'Slide bài giảng' },
-                                        { id: 3, name: 'Bài tập thực hành.docx', type: 'document', description: 'Bài tập và hướng dẫn' }
-                                    ]}
-                                    renderItem={(file) => (
-                                        <List.Item
-                                            style={{
-                                                padding: '8px 12px',
-                                                margin: '4px 0',
-                                                backgroundColor: '#f8f8f8',
-                                                borderRadius: '6px',
-                                                opacity: 0.7
-                                            }}
-                                        >
-                                            <List.Item.Meta
-                                                avatar={
-                                                    <Avatar 
-                                                        icon={getFileIcon(file.name)}
-                                                        style={{ backgroundColor: 'transparent' }}
-                                                        size="small"
-                                                    />
-                                                }
-                                                title={
-                                                    <Text style={{ fontSize: '13px', color: '#999' }}>
-                                                        {file.name}
-                                                    </Text>
-                                                }
-                                                description={
-                                                    <Text style={{ fontSize: '11px', color: '#ccc' }}>
-                                                        {file.description}
-                                                    </Text>
-                                                }
-                                            />
-                                        </List.Item>
-                                    )}
-                                />
-                            </div>
-                        )}
+
                     </Card>
                 </Col>
             </Row>

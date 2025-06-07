@@ -245,11 +245,13 @@ const deleteFileApi = (fileName) => {
 };
 
 // Course Documents API calls
-const uploadCourseDocumentApi = (courseId, formData) => {
+const uploadCourseDocumentApi = (courseId, formData, onUploadProgress = null) => {
     return axios.post(`/lms/courses/${courseId}/documents/upload`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 300000, // 5 minutes timeout
+        onUploadProgress: onUploadProgress
     });
 };
 
@@ -268,11 +270,13 @@ const downloadCourseDocumentApi = (courseId, documentId) => {
 };
 
 // Lesson Documents API calls
-const uploadLessonDocumentApi = (lessonId, formData) => {
+const uploadLessonDocumentApi = (lessonId, formData, onUploadProgress = null) => {
     return axios.post(`/lms/lessons/${lessonId}/documents/upload`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 300000, // 5 minutes timeout
+        onUploadProgress: onUploadProgress
     });
 };
 
