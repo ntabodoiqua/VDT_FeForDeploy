@@ -202,6 +202,15 @@ const fetchInstructorStatisticsApi = () => {
     return axios.get('/lms/statistics/instructor');
 }
 
+const fetchInstructorStatisticsFilteredApi = (startDate, endDate) => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/statistics/instructor/filtered?${queryParams.toString()}`);
+}
+
 const refreshTokenApi = () => {
     return axios.post('/lms/auth/refresh', {
         token: localStorage.getItem('access_token')
@@ -360,6 +369,7 @@ export {
     fetchAllEnrollmentsApi,
     fetchPopularCoursesApi,
     fetchInstructorStatisticsApi,
+    fetchInstructorStatisticsFilteredApi,
     refreshTokenApi,
     fetchMyInfoApi,
     updateMyInfoApi,
