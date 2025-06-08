@@ -324,6 +324,82 @@ const checkFileUsageApi = (fileName) => {
     return axios.get(`/lms/files/check-usage/${fileName}`);
 };
 
+// Quiz Management API calls
+const fetchQuizzesApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/quizzes?${queryParams.toString()}`);
+};
+
+const fetchQuizByIdApi = (quizId) => {
+    return axios.get(`/lms/quizzes/${quizId}`);
+};
+
+const createQuizApi = (quizData) => {
+    return axios.post('/lms/quizzes', quizData);
+};
+
+const updateQuizApi = (quizId, quizData) => {
+    return axios.put(`/lms/quizzes/${quizId}`, quizData);
+};
+
+const deleteQuizApi = (quizId) => {
+    return axios.delete(`/lms/quizzes/${quizId}`);
+};
+
+const toggleQuizStatusApi = (quizId) => {
+    return axios.patch(`/lms/quizzes/${quizId}/toggle-status`);
+};
+
+const fetchQuizSummaryApi = (quizId) => {
+    return axios.get(`/lms/quizzes/${quizId}/summary`);
+};
+
+const fetchCourseQuizzesApi = (courseId) => {
+    return axios.get(`/lms/quizzes/course/${courseId}`);
+};
+
+// Quiz Questions API calls
+const addQuestionToQuizApi = (quizId, questionData) => {
+    return axios.post(`/lms/quizzes/${quizId}/questions`, questionData);
+};
+
+const updateQuizQuestionApi = (questionId, questionData) => {
+    return axios.put(`/lms/quizzes/questions/${questionId}`, questionData);
+};
+
+const deleteQuizQuestionApi = (questionId) => {
+    return axios.delete(`/lms/quizzes/questions/${questionId}`);
+};
+
+const reorderQuizQuestionsApi = (quizId, questionsOrder) => {
+    return axios.put(`/lms/quizzes/${quizId}/questions/reorder`, questionsOrder);
+};
+
+// Quiz Attempts API calls (for instructor to view)
+const fetchQuizAttemptsApi = (quizId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/quiz-attempts/quiz/${quizId}?${queryParams.toString()}`);
+};
+
+// Quiz Preview API calls (for instructor/admin to test quiz)
+const startQuizPreviewApi = (quizId) => {
+    return axios.post(`/lms/quiz-attempts/quiz/${quizId}/preview/start`);
+};
+
+const answerQuestionPreviewApi = (sessionId, questionId, selectedAnswerId) => {
+    return axios.post(`/lms/quiz-attempts/preview/${sessionId}/questions/${questionId}/answer`, {
+        selectedAnswerId
+    });
+};
+
+const submitQuizPreviewApi = (sessionId) => {
+    return axios.post(`/lms/quiz-attempts/preview/${sessionId}/submit`);
+};
+
+const getPreviewStatusApi = (sessionId) => {
+    return axios.get(`/lms/quiz-attempts/preview/${sessionId}/status`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -394,5 +470,26 @@ export {
     // File download with authentication
     downloadFileWithTokenApi,
     // File usage check
-    checkFileUsageApi
+    checkFileUsageApi,
+    // Quiz Management
+    fetchQuizzesApi,
+    fetchQuizByIdApi,
+    createQuizApi,
+    updateQuizApi,
+    deleteQuizApi,
+    toggleQuizStatusApi,
+    fetchQuizSummaryApi,
+    fetchCourseQuizzesApi,
+    // Quiz Questions
+    addQuestionToQuizApi,
+    updateQuizQuestionApi,
+    deleteQuizQuestionApi,
+    reorderQuizQuestionsApi,
+    // Quiz Attempts
+    fetchQuizAttemptsApi,
+    // Quiz Preview
+    startQuizPreviewApi,
+    answerQuestionPreviewApi,
+    submitQuizPreviewApi,
+    getPreviewStatusApi
 }

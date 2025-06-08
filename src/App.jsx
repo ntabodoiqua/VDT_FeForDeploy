@@ -29,6 +29,8 @@ import ChangeMyPassword from './pages/instructor/ChangeMyPassword';
 import FileManagement from './pages/instructor/FileManagement';
 import InstructorStudentCourseView from './pages/instructor/StudentCourseView';
 import InstructorStudentLessonView from './pages/instructor/StudentLessonView';
+import InstructorQuizManagement from './pages/instructor/QuizManagement';
+import InstructorQuizQuestionManagement from './pages/instructor/QuizQuestionManagement';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
@@ -80,6 +82,8 @@ function App() {
                     <Route path="my-info" element={<MyInfoManagement />} />
                     <Route path="change-password" element={<ChangeMyPassword />} />
                     <Route path="files" element={<FileManagement />} />
+                    <Route path="quiz-management" element={<InstructorQuizManagement />} />
+                    <Route path="quiz-questions/:quizId" element={<InstructorQuizQuestionManagement />} />
                     <Route path="student-course-view/:courseId" element={<InstructorStudentCourseView />} />
                     <Route path="student-lesson-view/:lessonId" element={<InstructorStudentLessonView />} />
                 </Route>

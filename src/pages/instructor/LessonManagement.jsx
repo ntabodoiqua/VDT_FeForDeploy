@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, List, Upload, Divider } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined, UserOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, List, Upload, Divider, InputNumber } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import LargeFileUpload from '../../components/Upload/LargeFileUpload';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -14,7 +14,8 @@ import {
     fetchLessonDocumentsApi,
     uploadLessonDocumentApi,
     deleteLessonDocumentApi,
-    downloadLessonDocumentApi
+    downloadLessonDocumentApi,
+    createQuizApi
 } from '../../util/api';
 
 const { TextArea } = Input;
@@ -51,6 +52,11 @@ const LessonManagement = () => {
     const [uploading, setUploading] = useState(false);
     const [showProgress, setShowProgress] = useState(false);
     const [loadingDocuments, setLoadingDocuments] = useState(false);
+    
+    // Quiz creation state
+    const [createQuizModalVisible, setCreateQuizModalVisible] = useState(false);
+    const [selectedLessonForQuiz, setSelectedLessonForQuiz] = useState(null);
+    const [quizForm] = Form.useForm();
 
     const handleFilterSubmit = (values) => {
         const newFilters = { ...values };
@@ -120,7 +126,7 @@ const LessonManagement = () => {
         {
             title: 'Thao tác',
             key: 'action',
-            width: 250,
+            width: 300,
             align: 'center',
             render: (_, record) => (
                 <Space size="middle">
@@ -149,6 +155,13 @@ const LessonManagement = () => {
                         <Button
                             icon={<FileTextOutlined />}
                             onClick={() => handleViewLessonDocuments(record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Tạo Quiz">
+                        <Button
+                            icon={<QuestionCircleOutlined />}
+                            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1', color: 'white' }}
+                            onClick={() => handleCreateQuiz(record)}
                         />
                     </Tooltip>
                     <Tooltip title="Xóa bài học">
@@ -411,6 +424,53 @@ const LessonManagement = () => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             message.error('Lỗi khi tải xuống tài liệu: ' + error.message);
+        }
+    };
+
+    // Quiz creation functions
+    const handleCreateQuiz = (lesson) => {
+        setSelectedLessonForQuiz(lesson);
+        setCreateQuizModalVisible(true);
+        quizForm.resetFields();
+        quizForm.setFieldsValue({
+            lessonId: lesson.id,
+            type: 'PRACTICE',
+            passingScore: 70,
+            maxAttempts: 3,
+            timeLimitMinutes: 60
+        });
+    };
+
+    const handleCreateQuizSubmit = async (values) => {
+        try {
+            const quizData = {
+                ...values,
+                questions: [] // Start with empty questions, will be added later
+            };
+
+            const response = await createQuizApi(quizData);
+            if (response && response.code === 1000) {
+                message.success('Tạo quiz thành công!');
+                setCreateQuizModalVisible(false);
+                quizForm.resetFields();
+                setSelectedLessonForQuiz(null);
+
+                // Ask if user wants to add questions
+                Modal.confirm({
+                    title: 'Tạo quiz thành công!',
+                    content: 'Bạn có muốn thêm câu hỏi cho quiz này ngay không?',
+                    okText: 'Có',
+                    cancelText: 'Không',
+                    onOk() {
+                        navigate(`/instructor/quiz-questions/${response.result.id}`);
+                    }
+                });
+            } else {
+                message.error(response.message || 'Không thể tạo quiz.');
+            }
+        } catch (error) {
+            console.error("Create quiz error:", error);
+            message.error('Có lỗi xảy ra khi tạo quiz.');
         }
     };
 
@@ -756,6 +816,116 @@ const LessonManagement = () => {
                                 disabled={uploading}
                             >
                                 Hủy
+                            </Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Create Quiz Modal */}
+            <Modal
+                title={`Tạo Quiz cho bài học: ${selectedLessonForQuiz?.title || ''}`}
+                open={createQuizModalVisible}
+                onCancel={() => {
+                    setCreateQuizModalVisible(false);
+                    setSelectedLessonForQuiz(null);
+                    quizForm.resetFields();
+                }}
+                footer={null}
+                width={600}
+            >
+                <Form
+                    form={quizForm}
+                    layout="vertical"
+                    onFinish={handleCreateQuizSubmit}
+                >
+                    <Form.Item
+                        name="title"
+                        label="Tên Quiz"
+                        rules={[{ required: true, message: 'Vui lòng nhập tên quiz!' }]}
+                    >
+                        <Input placeholder="Nhập tên quiz" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="description"
+                        label="Mô tả"
+                    >
+                        <TextArea rows={3} placeholder="Nhập mô tả quiz" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="type"
+                        label="Loại Quiz"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại quiz!' }]}
+                    >
+                        <Select placeholder="Chọn loại quiz">
+                            <Option value="PRACTICE">Luyện tập</Option>
+                            <Option value="ASSESSMENT">Đánh giá</Option>
+                        </Select>
+                    </Form.Item>
+
+                    <Row gutter={16}>
+                        <Col span={8}>
+                            <Form.Item
+                                name="passingScore"
+                                label="Điểm đạt (%)"
+                                rules={[{ required: true, message: 'Vui lòng nhập điểm đạt!' }]}
+                            >
+                                <InputNumber 
+                                    min={0} 
+                                    max={100} 
+                                    placeholder="70"
+                                    style={{ width: '100%' }}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item
+                                name="maxAttempts"
+                                label="Số lần thử tối đa"
+                                rules={[{ required: true, message: 'Vui lòng nhập số lần thử!' }]}
+                            >
+                                <InputNumber 
+                                    min={1} 
+                                    placeholder="3"
+                                    style={{ width: '100%' }}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                            <Form.Item
+                                name="timeLimitMinutes"
+                                label="Thời gian (phút)"
+                                rules={[{ required: true, message: 'Vui lòng nhập thời gian!' }]}
+                            >
+                                <InputNumber 
+                                    min={1} 
+                                    placeholder="60"
+                                    style={{ width: '100%' }}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item
+                        name="lessonId"
+                        hidden
+                    >
+                        <Input />
+                    </Form.Item>
+
+                    <Form.Item style={{ textAlign: 'right', marginTop: '24px' }}>
+                        <Space>
+                            <Button onClick={() => {
+                                setCreateQuizModalVisible(false);
+                                setSelectedLessonForQuiz(null);
+                                quizForm.resetFields();
+                            }}>
+                                Hủy
+                            </Button>
+                            <Button type="primary" htmlType="submit">
+                                Tạo Quiz
                             </Button>
                         </Space>
                     </Form.Item>

@@ -10,7 +10,8 @@ import {
     LinkOutlined,
     SolutionOutlined,
     UserOutlined,
-    FolderOpenOutlined
+    FolderOpenOutlined,
+    QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -62,6 +63,12 @@ const InstructorDashboard = () => {
                     icon: <FileTextOutlined />,
                     label: 'Quản lý bài học',
                     onClick: () => navigate('/instructor/lessons')
+                },
+                {
+                    key: 'quiz-management',
+                    icon: <QuestionCircleOutlined />,
+                    label: 'Quản lý Quiz',
+                    onClick: () => navigate('/instructor/quiz-management')
                 },
                 {
                     key: 'course-lesson-management',
@@ -129,9 +136,13 @@ const InstructorDashboard = () => {
     const getSelectedKey = () => {
         const path = location.pathname.split('/')[2];
 
+        // Handle case where path is undefined
+        if (!path) return 'courses';
+
         if (path === 'courses') return 'courses';
         if (path === 'course-categories') return 'course-categories';
         if (path === 'lessons') return 'lessons';
+        if (path === 'quiz-management' || path.startsWith('quiz-')) return 'quiz-management';
         if (path === 'course-lesson-management') return 'course-lesson-management';
         if (path === 'enrollments') return 'enrollments';
         if (path === 'reviews') return 'reviews';
@@ -149,7 +160,7 @@ const InstructorDashboard = () => {
         if (currentPath.includes('/instructor/courses') || currentPath.includes('/instructor/course-categories')) {
             return ['course-lesson-management-group', 'course-management-submenu'];
         }
-        if (currentPath.includes('/instructor/lessons') || currentPath.includes('/instructor/course-lesson-management')) {
+        if (currentPath.includes('/instructor/lessons') || currentPath.includes('/instructor/quiz-management') || currentPath.includes('/instructor/quiz-questions') || currentPath.includes('/instructor/course-lesson-management')) {
             return ['course-lesson-management-group'];
         }
         if (currentPath.includes('/instructor/enrollments') || currentPath.includes('/instructor/reviews')) {
