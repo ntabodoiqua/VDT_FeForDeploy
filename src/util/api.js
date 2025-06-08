@@ -204,6 +204,26 @@ const fetchPopularCoursesApi = (params) => {
     return axios.get(`/lms/courses/public/popular?${queryParams.toString()}`);
 }
 
+// Instructor Public API calls
+const fetchTopInstructorsApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/instructors/public/top?${queryParams.toString()}`);
+};
+
+const fetchAllInstructorsApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/instructors/public?${queryParams.toString()}`);
+};
+
+const fetchInstructorByIdApi = (instructorId) => {
+    return axios.get(`/lms/instructors/public/${instructorId}`);
+};
+
+const fetchInstructorCoursesApi = (instructorId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/instructors/public/${instructorId}/courses?${queryParams.toString()}`);
+};
+
 const fetchInstructorStatisticsApi = () => {
     return axios.get('/lms/statistics/instructor');
 }
@@ -461,6 +481,11 @@ export {
     fetchAllReviewsApi,
     fetchAllEnrollmentsApi,
     fetchPopularCoursesApi,
+    // Instructor Public APIs
+    fetchTopInstructorsApi,
+    fetchAllInstructorsApi,
+    fetchInstructorByIdApi,
+    fetchInstructorCoursesApi,
     fetchInstructorStatisticsApi,
     fetchInstructorStatisticsFilteredApi,
     refreshTokenApi,

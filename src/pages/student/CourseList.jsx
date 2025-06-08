@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Input, Select, message, Modal, Tag, Rate, Spin, List, Typography, Pagination, Divider, Form, DatePicker, Space } from 'antd';
-import { SearchOutlined, ShoppingCartOutlined, TrophyOutlined, EyeOutlined, BookOutlined, PlayCircleOutlined, AppstoreOutlined, ClearOutlined } from '@ant-design/icons';
-import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi, fetchCoursesApi } from '../../util/api';
+import { Card, Row, Col, Button, Input, Select, message, Modal, Tag, Rate, Spin, List, Typography, Pagination, Divider, Form, DatePicker, Space, Image, Avatar, Descriptions } from 'antd';
+import { SearchOutlined, ShoppingCartOutlined, TrophyOutlined, EyeOutlined, BookOutlined, PlayCircleOutlined, AppstoreOutlined, ClearOutlined, UserOutlined, ClockCircleOutlined, StarOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi, fetchCoursesApi, fetchCourseByIdApi } from '../../util/api';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -22,6 +22,12 @@ const CourseList = () => {
     const [courseLessons, setCourseLessons] = useState([]);
     const [loadingLessons, setLoadingLessons] = useState(false);
     const [selectedCourseForLessons, setSelectedCourseForLessons] = useState(null);
+
+    // New states for course preview modal
+    const [previewModalVisible, setPreviewModalVisible] = useState(false);
+    const [previewCourse, setPreviewCourse] = useState(null);
+    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [previewCourseLessons, setPreviewCourseLessons] = useState([]);
 
     // New states for all courses section
     const [allCourses, setAllCourses] = useState([]);
@@ -81,7 +87,6 @@ const CourseList = () => {
             if (data.code === 1000 && data.result) {
                 // Popular courses API returns array with course object and enrollmentCount
                 setPopularCourses(data.result);
-                message.success('Đã tải danh sách khóa học phổ biến');
             } else {
                 message.error(data.message || 'Không thể tải danh sách khóa học');
             }
@@ -121,6 +126,37 @@ const CourseList = () => {
             message.error('Không thể tải danh sách bài học: ' + error.message);
         } finally {
             setLoadingLessons(false);
+        }
+    };
+
+    const fetchCoursePreview = async (courseId) => {
+        setLoadingPreview(true);
+        try {
+            // Fetch course details and lessons simultaneously
+            const [courseResponse, lessonsResponse] = await Promise.all([
+                fetchCourseByIdApi(courseId),
+                fetchPublicLessonsForCourseApi(courseId, { page: 0, size: 10 }) // First 10 lessons for preview
+            ]);
+
+            const courseData = courseResponse.data || courseResponse;
+            const lessonsData = lessonsResponse.data || lessonsResponse;
+
+            if (courseData.code === 1000 && courseData.result) {
+                setPreviewCourse(courseData.result);
+                
+                if (lessonsData.code === 1000 && lessonsData.result) {
+                    setPreviewCourseLessons(lessonsData.result.content || lessonsData.result);
+                }
+                
+                setPreviewModalVisible(true);
+            } else {
+                message.error(courseData.message || 'Không thể tải thông tin khóa học');
+            }
+        } catch (error) {
+            console.error('Error fetching course preview:', error);
+            message.error('Không thể tải thông tin khóa học: ' + error.message);
+        } finally {
+            setLoadingPreview(false);
         }
     };
 
@@ -196,6 +232,11 @@ const CourseList = () => {
         setSelectedCourseForLessons(courseData);
         setLessonsModalVisible(true);
         fetchCourseLessons(course.id);
+    };
+
+    const handlePreviewCourse = (courseData) => {
+        const course = courseData.course || courseData;
+        fetchCoursePreview(course.id);
     };
 
     const handleEnroll = (courseData) => {
@@ -329,11 +370,12 @@ const CourseList = () => {
                                     actions={[
                                         <Button
                                             type="default"
-                                            icon={<EyeOutlined />}
-                                            onClick={() => handleViewLessons(courseData)}
+                                            icon={<InfoCircleOutlined />}
+                                            onClick={() => handlePreviewCourse(courseData)}
                                             style={{ marginRight: 8 }}
+                                            loading={loadingPreview}
                                         >
-                                            Xem bài học
+                                            Xem trước
                                         </Button>,
                                         <Button
                                             type="primary"
@@ -503,11 +545,12 @@ const CourseList = () => {
                                     actions={[
                                         <Button
                                             type="default"
-                                            icon={<EyeOutlined />}
-                                            onClick={() => handleViewLessons(course)}
+                                            icon={<InfoCircleOutlined />}
+                                            onClick={() => handlePreviewCourse(course)}
                                             style={{ marginRight: 8 }}
+                                            loading={loadingPreview}
                                         >
-                                            Xem bài học
+                                            Xem trước
                                         </Button>,
                                         <Button
                                             type="primary"
@@ -706,6 +749,329 @@ const CourseList = () => {
                         )}
                     </div>
                 )}
+            </Modal>
+
+            {/* Course Preview Modal */}
+            <Modal
+                title={null}
+                open={previewModalVisible}
+                onCancel={() => {
+                    setPreviewModalVisible(false);
+                    setPreviewCourse(null);
+                    setPreviewCourseLessons([]);
+                }}
+                footer={null}
+                width={900}
+                style={{ top: 20 }}
+                bodyStyle={{ padding: 0 }}
+            >
+                {loadingPreview ? (
+                    <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                        <Spin size="large" />
+                        <p style={{ marginTop: 16, fontSize: '16px' }}>Đang tải thông tin khóa học...</p>
+                    </div>
+                ) : previewCourse ? (
+                    <div>
+                        {/* Course Header */}
+                        <div style={{ 
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            padding: '32px',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            {/* Background Pattern */}
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+                                opacity: 0.3
+                            }}></div>
+                            
+                            <Row gutter={24} style={{ position: 'relative', zIndex: 1 }}>
+                                <Col span={16}>
+                                    <div>
+                                        <Tag color="gold" style={{ marginBottom: 12, fontSize: '12px' }}>
+                                            <StarOutlined /> {getCategoryName(previewCourse)}
+                                        </Tag>
+                                        <Title level={2} style={{ color: 'white', marginBottom: 8 }}>
+                                            {previewCourse.title}
+                                        </Title>
+                                        <p style={{ fontSize: '16px', marginBottom: 16, opacity: 0.9 }}>
+                                            {previewCourse.description}
+                                        </p>
+                                        
+                                        {/* Course Stats */}
+                                        <Row gutter={24}>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                                                        {previewCourse.totalLessons || 0}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', opacity: 0.8 }}>Bài học</div>
+                                                </div>
+                                            </Col>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                                                        {previewCourse.averageRating ? previewCourse.averageRating.toFixed(1) : 'N/A'}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', opacity: 0.8 }}>Đánh giá</div>
+                                                </div>
+                                            </Col>
+                                            <Col span={8}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                                                        {previewCourse.totalReviews || 0}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', opacity: 0.8 }}>Học viên</div>
+                                                </div>
+                                            </Col>
+                                        </Row>
+                                    </div>
+                                </Col>
+                                <Col span={8}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <Image
+                                            src={getDisplayImageUrl(previewCourse.thumbnailUrl)}
+                                            alt={previewCourse.title}
+                                            style={{
+                                                width: '100%',
+                                                maxWidth: '200px',
+                                                height: '150px',
+                                                objectFit: 'cover',
+                                                borderRadius: '12px',
+                                                border: '3px solid rgba(255,255,255,0.3)'
+                                            }}
+                                            fallback="https://via.placeholder.com/200x150"
+                                        />
+                                    </div>
+                                </Col>
+                            </Row>
+                        </div>
+
+                        {/* Course Content */}
+                        <div style={{ padding: '32px' }}>
+                            <Row gutter={32}>
+                                {/* Left Column - Course Details */}
+                                <Col span={14}>
+                                    <div style={{ marginBottom: 32 }}>
+                                        <Title level={4} style={{ marginBottom: 16, color: '#1890ff' }}>
+                                            <BookOutlined style={{ marginRight: 8 }} />
+                                            Thông tin khóa học
+                                        </Title>
+                                        <Descriptions bordered size="small" column={1}>
+                                            <Descriptions.Item label="Giảng viên">
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
+                                                    <span>
+                                                        {previewCourse.instructor ? 
+                                                            `${previewCourse.instructor.firstName} ${previewCourse.instructor.lastName}` : 
+                                                            'Chưa có thông tin'
+                                                        }
+                                                    </span>
+                                                </div>
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Danh mục">
+                                                <Tag color="blue">{getCategoryName(previewCourse)}</Tag>
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Trạng thái">
+                                                {previewCourse.isActive ? (
+                                                    <Tag color="green">Đang mở đăng ký</Tag>
+                                                ) : (
+                                                    <Tag color="red">Đã đóng</Tag>
+                                                )}
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Đánh giá">
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    {previewCourse.averageRating ? (
+                                                        <>
+                                                            <Rate disabled defaultValue={previewCourse.averageRating} style={{ fontSize: '14px', marginRight: 8 }} />
+                                                            <span>
+                                                                {previewCourse.averageRating.toFixed(1)}/5 
+                                                                ({previewCourse.totalReviews || 0} đánh giá)
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <span style={{ color: '#999' }}>Chưa có đánh giá</span>
+                                                    )}
+                                                </div>
+                                            </Descriptions.Item>
+                                            {previewCourse.price && (
+                                                <Descriptions.Item label="Học phí">
+                                                    <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#f5222d' }}>
+                                                        {previewCourse.price.toLocaleString('vi-VN')} VNĐ
+                                                    </span>
+                                                </Descriptions.Item>
+                                            )}
+                                        </Descriptions>
+                                    </div>
+
+                                    {/* Preview Lessons */}
+                                    <div>
+                                        <Title level={4} style={{ marginBottom: 16, color: '#1890ff' }}>
+                                            <PlayCircleOutlined style={{ marginRight: 8 }} />
+                                            Bài học mẫu
+                                        </Title>
+                                        {previewCourseLessons.length > 0 ? (
+                                            <div>
+                                                <List
+                                                    size="small"
+                                                    dataSource={previewCourseLessons.slice(0, 5)} // Show first 5 lessons
+                                                    renderItem={(lessonData, index) => {
+                                                        const lesson = lessonData.lesson || lessonData;
+                                                        return (
+                                                            <List.Item style={{ 
+                                                                padding: '12px 16px',
+                                                                border: '1px solid #f0f0f0',
+                                                                borderRadius: '8px',
+                                                                marginBottom: '8px',
+                                                                backgroundColor: '#fafafa'
+                                                            }}>
+                                                                <List.Item.Meta
+                                                                    avatar={
+                                                                        <div style={{
+                                                                            width: '32px',
+                                                                            height: '32px',
+                                                                            borderRadius: '50%',
+                                                                            backgroundColor: '#1890ff',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            color: 'white',
+                                                                            fontSize: '12px',
+                                                                            fontWeight: 'bold'
+                                                                        }}>
+                                                                            {lessonData.orderIndex || index + 1}
+                                                                        </div>
+                                                                    }
+                                                                    title={<span style={{ fontSize: '14px' }}>{lesson.title}</span>}
+                                                                    description={
+                                                                        <div style={{ fontSize: '12px', color: '#666' }}>
+                                                                            {lesson.description || 'Khám phá nội dung thú vị'}
+                                                                            {lesson.duration && (
+                                                                                <Tag size="small" color="blue" style={{ marginLeft: 8 }}>
+                                                                                    <ClockCircleOutlined style={{ marginRight: 4 }} />
+                                                                                    {lesson.duration}p
+                                                                                </Tag>
+                                                                            )}
+                                                                        </div>
+                                                                    }
+                                                                />
+                                                            </List.Item>
+                                                        );
+                                                    }}
+                                                />
+                                                {previewCourseLessons.length > 5 && (
+                                                    <div style={{ textAlign: 'center', marginTop: 16 }}>
+                                                        <Text type="secondary">
+                                                            và {previewCourseLessons.length - 5} bài học khác...
+                                                        </Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                                <BookOutlined style={{ fontSize: '32px', color: '#ccc', marginBottom: 8 }} />
+                                                <p style={{ color: '#666' }}>Chưa có bài học mẫu</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Col>
+
+                                {/* Right Column - Action Panel */}
+                                <Col span={10}>
+                                    <div style={{ 
+                                        border: '2px solid #1890ff',
+                                        borderRadius: '12px',
+                                        padding: '24px',
+                                        backgroundColor: '#f0f8ff',
+                                        position: 'sticky',
+                                        top: 20
+                                    }}>
+                                        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                                            <Title level={3} style={{ color: '#1890ff', marginBottom: 8 }}>
+                                                Bắt đầu học ngay!
+                                            </Title>
+                                            <p style={{ color: '#666', marginBottom: 0 }}>
+                                                Tham gia cùng hàng nghìn học viên khác
+                                            </p>
+                                        </div>
+
+                                        <div style={{ marginBottom: 20 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <span>✅ Truy cập trọn đời</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <span>✅ Học mọi lúc, mọi nơi</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <span>✅ Cộng đồng học viên</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <span>✅ Hỗ trợ từ giảng viên</span>
+                                            </div>
+                                        </div>
+
+                                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                            <Button
+                                                type="primary"
+                                                size="large"
+                                                icon={<ShoppingCartOutlined />}
+                                                onClick={() => {
+                                                    setPreviewModalVisible(false);
+                                                    handleEnroll(previewCourse);
+                                                }}
+                                                disabled={!previewCourse.isActive}
+                                                style={{ 
+                                                    width: '100%',
+                                                    height: '50px',
+                                                    fontSize: '16px',
+                                                    fontWeight: 'bold'
+                                                }}
+                                            >
+                                                {previewCourse.isActive ? 'Đăng ký ngay' : 'Khóa học đã đóng'}
+                                            </Button>
+                                            
+                                            <Button
+                                                type="default"
+                                                size="large"
+                                                icon={<EyeOutlined />}
+                                                onClick={() => {
+                                                    setPreviewModalVisible(false);
+                                                    handleViewLessons(previewCourse);
+                                                }}
+                                                style={{ width: '100%', height: '45px' }}
+                                            >
+                                                Xem tất cả bài học
+                                            </Button>
+                                        </Space>
+
+                                        {previewCourse.price && (
+                                            <div style={{ 
+                                                textAlign: 'center', 
+                                                marginTop: 16,
+                                                padding: '12px',
+                                                backgroundColor: '#fff2e8',
+                                                borderRadius: '8px',
+                                                border: '1px solid #ffbb96'
+                                            }}>
+                                                <Text style={{ fontSize: '14px', color: '#666' }}>Chỉ với</Text>
+                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f5222d' }}>
+                                                    {previewCourse.price.toLocaleString('vi-VN')} VNĐ
+                                                </div>
+                                                <Text style={{ fontSize: '12px', color: '#999' }}>một lần thanh toán</Text>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Col>
+                            </Row>
+                        </div>
+                    </div>
+                ) : null}
             </Modal>
 
             {/* Enrollment Confirmation Modal */}

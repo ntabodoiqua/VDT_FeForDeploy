@@ -34,6 +34,7 @@ import InstructorQuizQuestionManagement from './pages/instructor/QuizQuestionMan
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
+import StudentInstructorList from './pages/student/InstructorList';
 import MyAccount from './pages/student/MyAccount';
 
 function App() {
@@ -97,6 +98,7 @@ function App() {
                     <Route index element={<Navigate to="courses" replace />} />
                     <Route path="courses" element={<StudentCourses />} />
                     <Route path="available-courses" element={<StudentCourseList />} />
+                    <Route path="instructors" element={<StudentInstructorList />} />
                     <Route path="learning/:courseId" element={<StudentCourseDetail />} />
                     <Route path="my-account" element={<MyAccount />} />
                 </Route>
