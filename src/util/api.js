@@ -73,6 +73,12 @@ const fetchLessonsForCourseApi = (courseId, params) => {
     return axios.get(`/lms/courses/${courseId}/lessons?${queryParams.toString()}`);
 };
 
+// API to fetch public lessons for a specific course (for students)
+const fetchPublicLessonsForCourseApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/courses/${courseId}/lessons/public?${queryParams.toString()}`);
+};
+
 // API to add a lesson to a course
 const addLessonToCourseApi = (courseId, courseLessonRequest) => {
     return axios.post(`/lms/courses/${courseId}/lessons`, courseLessonRequest);
@@ -415,6 +421,7 @@ export {
     deleteCourseApi,
     toggleCourseStatusApi,
     fetchLessonsForCourseApi,
+    fetchPublicLessonsForCourseApi,
     addLessonToCourseApi,
     fetchAllSystemLessonsApi,
     removeLessonFromCourseApi,
