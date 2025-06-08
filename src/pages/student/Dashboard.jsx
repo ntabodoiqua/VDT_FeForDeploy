@@ -1,12 +1,14 @@
-import React from 'react';
-import { Layout, Menu } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, Button } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     BookOutlined,
     ReadOutlined,
     ShoppingCartOutlined,
     LogoutOutlined,
-    UserOutlined
+    UserOutlined,
+    MenuUnfoldOutlined,
+    MenuFoldOutlined
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -15,6 +17,7 @@ import logo from '../../assets/images/logo.png';
 const { Header, Sider, Content } = Layout;
 
 const StudentDashboard = () => {
+    const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { setAuth } = useContext(AuthContext);
@@ -74,13 +77,18 @@ const StudentDashboard = () => {
             <Sider 
                 width={250} 
                 theme="light"
+                collapsible
+                collapsed={collapsed}
+                onCollapse={setCollapsed}
+                trigger={null}
                 style={{
                     position: 'fixed',
                     height: '100vh',
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    zIndex: 1000
+                    zIndex: 1000,
+                    transition: 'width 0.2s'
                 }}
             >
                 <div 
@@ -94,7 +102,12 @@ const StudentDashboard = () => {
                         borderBottom: '1px solid #f0f0f0',
                     }}
                 >
-                    <img src={logo} alt="Logo" style={{ height: '40px', maxWidth: '100%' }} />
+                    {!collapsed && (
+                        <img src={logo} alt="Logo" style={{ height: '40px', maxWidth: '100%' }} />
+                    )}
+                    {collapsed && (
+                        <BookOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                    )}
                 </div>
                 <Menu
                     mode="inline"
@@ -103,9 +116,30 @@ const StudentDashboard = () => {
                     style={{ height: '100%', borderRight: 0 }}
                 />
             </Sider>
-            <Layout style={{ marginLeft: 250 }}>
-                <Header style={{ background: '#fff', padding: 0, paddingLeft: 16 }}>
-                    <h2>Trang học viên</h2>
+            <Layout style={{ marginLeft: collapsed ? 80 : 250, transition: 'margin-left 0.2s' }}>
+                <Header style={{ 
+                    background: '#fff', 
+                    padding: 0, 
+                    paddingLeft: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #f0f0f0'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Button
+                            type="text"
+                            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={() => setCollapsed(!collapsed)}
+                            style={{
+                                fontSize: '16px',
+                                width: 64,
+                                height: 64,
+                                marginRight: 16
+                            }}
+                        />
+                        <h2 style={{ margin: 0 }}>Trang học viên</h2>
+                    </div>
                 </Header>
                 <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
                     <Outlet />

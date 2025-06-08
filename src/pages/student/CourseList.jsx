@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Input, Select, message, Modal, Tag, Rate, Spin, List, Typography } from 'antd';
-import { SearchOutlined, ShoppingCartOutlined, TrophyOutlined, EyeOutlined, BookOutlined, PlayCircleOutlined } from '@ant-design/icons';
-import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi } from '../../util/api';
+import { Card, Row, Col, Button, Input, Select, message, Modal, Tag, Rate, Spin, List, Typography, Pagination, Divider, Form, DatePicker, Space } from 'antd';
+import { SearchOutlined, ShoppingCartOutlined, TrophyOutlined, EyeOutlined, BookOutlined, PlayCircleOutlined, AppstoreOutlined, ClearOutlined } from '@ant-design/icons';
+import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi, fetchCoursesApi } from '../../util/api';
 
 const { Search } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 const CourseList = () => {
     const [popularCourses, setPopularCourses] = useState([]);
@@ -21,6 +22,23 @@ const CourseList = () => {
     const [courseLessons, setCourseLessons] = useState([]);
     const [loadingLessons, setLoadingLessons] = useState(false);
     const [selectedCourseForLessons, setSelectedCourseForLessons] = useState(null);
+
+    // New states for all courses section
+    const [allCourses, setAllCourses] = useState([]);
+    const [allCoursesLoading, setAllCoursesLoading] = useState(false);
+    const [allCoursesFilterForm] = Form.useForm();
+    const [allCoursesFilterValues, setAllCoursesFilterValues] = useState({
+        title: null,
+        instructorName: null,
+        category: null,
+        isActive: null,
+        startDateRange: null,
+    });
+    const [allCoursesPagination, setAllCoursesPagination] = useState({
+        current: 1,
+        pageSize: 12,
+        total: 0
+    });
 
     // Helper function to get full image URL
     const getDisplayImageUrl = (urlPath) => {
@@ -106,10 +124,64 @@ const CourseList = () => {
         }
     };
 
+    const fetchAllCourses = async (page = 1, pageSize = 12, filtersToApply = allCoursesFilterValues) => {
+        setAllCoursesLoading(true);
+        try {
+            const params = {
+                page: page - 1, // Backend expects 0-based indexing
+                size: pageSize,
+                title: filtersToApply.title || undefined,
+                instructorName: filtersToApply.instructorName || undefined,
+                category: filtersToApply.category || undefined,
+                isActive: filtersToApply.isActive === null || filtersToApply.isActive === 'all' ? undefined : filtersToApply.isActive,
+                startDateFrom: filtersToApply.startDateRange?.[0] ? filtersToApply.startDateRange[0].format('YYYY-MM-DD') : undefined,
+                startDateTo: filtersToApply.startDateRange?.[1] ? filtersToApply.startDateRange[1].format('YYYY-MM-DD') : undefined,
+            };
+
+            // Remove undefined values
+            Object.keys(params).forEach(key => (params[key] === undefined || params[key] === '') && delete params[key]);
+
+            const response = await fetchCoursesApi(params);
+            const data = response;
+            
+            if (data.code === 1000 && data.result) {
+                setAllCourses(data.result.content || []);
+                setAllCoursesPagination({
+                    current: page,
+                    pageSize: pageSize,
+                    total: data.result.totalElements || 0
+                });
+            } else {
+                message.error(data.message || 'Không thể tải danh sách khóa học');
+            }
+        } catch (error) {
+            console.error('Error fetching all courses:', error);
+            message.error('Không thể tải danh sách khóa học: ' + error.message);
+        } finally {
+            setAllCoursesLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchPopularCourses();
         fetchCategoriesList();
+        fetchAllCourses(); // Load initial all courses
     }, []);
+
+    // Effect to refetch all courses when filters change  
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (allCoursesFilterValues.title !== null || 
+                allCoursesFilterValues.instructorName !== null ||
+                allCoursesFilterValues.category !== null ||
+                allCoursesFilterValues.isActive !== null ||
+                allCoursesFilterValues.startDateRange !== null) {
+                fetchAllCourses(1, allCoursesPagination.pageSize, allCoursesFilterValues);
+            }
+        }, 500); // Debounce search
+
+        return () => clearTimeout(timeoutId);
+    }, [allCoursesFilterValues]);
 
     const handleSearch = (value) => {
         setSearchText(value);
@@ -144,6 +216,30 @@ const CourseList = () => {
         } catch (error) {
             message.error('Không thể đăng ký khóa học');
         }
+    };
+
+    // Handlers for all courses section
+    const onApplyAllCoursesFilters = () => {
+        const currentFilterFormValues = allCoursesFilterForm.getFieldsValue();
+        setAllCoursesFilterValues(currentFilterFormValues);
+        fetchAllCourses(1, allCoursesPagination.pageSize, currentFilterFormValues);
+    };
+
+    const onClearAllCoursesFilters = () => {
+        allCoursesFilterForm.resetFields();
+        const clearedFilters = {
+            title: null, 
+            instructorName: null, 
+            category: null, 
+            isActive: null,
+            startDateRange: null,
+        };
+        setAllCoursesFilterValues(clearedFilters);
+        fetchAllCourses(1, allCoursesPagination.pageSize, clearedFilters);
+    };
+
+    const handleAllCoursesPaginationChange = (page, pageSize) => {
+        fetchAllCourses(page, pageSize, allCoursesFilterValues);
     };
 
     const filteredCourses = popularCourses.filter(courseData => {
@@ -207,12 +303,13 @@ const CourseList = () => {
                             <Col xs={24} sm={12} md={8} lg={6} key={course.id}>
                                 <Card
                                     hoverable
+                                    style={{ height: '100%' }}
                                     cover={
                                         <div style={{ position: 'relative' }}>
                                             <img 
                                                 alt={course.title} 
                                                 src={getDisplayImageUrl(course.thumbnailUrl)} 
-                                                style={{ height: 200, objectFit: 'cover', width: '100%' }}
+                                                style={{ height: 240, objectFit: 'cover', width: '100%' }}
                                             />
                                             <div style={{
                                                 position: 'absolute',
@@ -313,6 +410,188 @@ const CourseList = () => {
                 <div style={{ textAlign: 'center', marginTop: 40 }}>
                     <p>Không tìm thấy khóa học nào phù hợp với tiêu chí tìm kiếm.</p>
                 </div>
+            )}
+
+            {/* Divider between popular courses and all courses */}
+            <Divider style={{ margin: '48px 0' }} />
+
+            {/* All Courses Section */}
+            <div style={{ marginBottom: 24 }}>
+                <h2><AppstoreOutlined style={{ color: '#52c41a', marginRight: 8 }} />Toàn bộ khóa học</h2>
+                <p>Khám phá tất cả các khóa học có sẵn trong hệ thống</p>
+            </div>
+
+            <Card style={{ marginBottom: 16 }}>
+                <Form form={allCoursesFilterForm} layout="vertical" onFinish={onApplyAllCoursesFilters}>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12} md={8} lg={6}>
+                            <Form.Item name="title" label="Tên khóa học">
+                                <Input placeholder="Nhập tên khóa học" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={8} lg={6}>
+                            <Form.Item name="instructorName" label="Tên giảng viên">
+                                <Input placeholder="Nhập tên giảng viên" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={8} lg={6}>
+                            <Form.Item name="category" label="Danh mục">
+                                <Select placeholder="Chọn danh mục" allowClear>
+                                    {categories.map(cat => (
+                                        <Option key={cat.id} value={cat.name}>{cat.name}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={8} lg={6}>
+                            <Form.Item name="isActive" label="Trạng thái">
+                                <Select placeholder="Chọn trạng thái" allowClear>
+                                    <Option value="all">Tất cả</Option>
+                                    <Option value={true}>Đang mở</Option>
+                                    <Option value={false}>Đã đóng</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={12} lg={12}>
+                            <Form.Item name="startDateRange" label="Ngày bắt đầu khóa học">
+                                <RangePicker style={{ width: '100%' }} placeholder={['Từ ngày', 'Đến ngày']} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={12} lg={12}>
+                            <div style={{ paddingTop: '30px' }}>
+                                <Space>
+                                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                                        Tìm kiếm
+                                    </Button>
+                                    <Button onClick={onClearAllCoursesFilters} icon={<ClearOutlined />}>
+                                        Xóa bộ lọc
+                                    </Button>
+                                </Space>
+                            </div>
+                        </Col>
+                    </Row>
+                </Form>
+            </Card>
+
+            {allCoursesLoading ? (
+                <div style={{ textAlign: 'center', marginTop: 50 }}>
+                    <Spin size="large" />
+                    <p style={{ marginTop: 16 }}>Đang tải toàn bộ khóa học...</p>
+                </div>
+            ) : (
+                <>
+                    <Row gutter={[24, 24]}>
+                        {allCourses.map((course) => (
+                            <Col xs={24} sm={12} md={8} lg={6} key={course.id}>
+                                <Card
+                                    hoverable
+                                    style={{ height: '100%' }}
+                                    cover={
+                                        <div style={{ position: 'relative' }}>
+                                            <img 
+                                                alt={course.title} 
+                                                src={getDisplayImageUrl(course.thumbnailUrl)} 
+                                                style={{ height: 240, objectFit: 'cover', width: '100%' }}
+                                            />
+                                        </div>
+                                    }
+                                    actions={[
+                                        <Button
+                                            type="default"
+                                            icon={<EyeOutlined />}
+                                            onClick={() => handleViewLessons(course)}
+                                            style={{ marginRight: 8 }}
+                                        >
+                                            Xem bài học
+                                        </Button>,
+                                        <Button
+                                            type="primary"
+                                            icon={<ShoppingCartOutlined />}
+                                            onClick={() => handleEnroll(course)}
+                                            disabled={!course.isActive}
+                                        >
+                                            {course.isActive ? 'Đăng ký' : 'Đã đóng'}
+                                        </Button>
+                                    ]}
+                                >
+                                    <Card.Meta
+                                        title={
+                                            <div>
+                                                <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: 8 }}>
+                                                    {course.title}
+                                                </div>
+                                                <div style={{ marginBottom: 8 }}>
+                                                    <Tag color="blue">{getCategoryName(course)}</Tag>
+                                                    {course.isActive ? (
+                                                        <Tag color="green">Đang mở</Tag>
+                                                    ) : (
+                                                        <Tag color="red">Đã đóng</Tag>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        }
+                                        description={
+                                            <div>
+                                                <p style={{ marginBottom: 8, minHeight: 40, overflow: 'hidden' }}>
+                                                    {course.description}
+                                                </p>
+                                                {course.instructor && (
+                                                    <p style={{ marginBottom: 8, color: '#666' }}>
+                                                        <strong>Giảng viên:</strong> {course.instructor.firstName} {course.instructor.lastName}
+                                                    </p>
+                                                )}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                                    <div>
+                                                        <p style={{ margin: 0, color: '#666' }}>
+                                                            <strong>Bài học:</strong> {course.totalLessons || 0}
+                                                        </p>
+                                                    </div>
+                                                    {course.rating && (
+                                                        <div>
+                                                            <Rate disabled defaultValue={course.rating} style={{ fontSize: '12px' }} />
+                                                            <span style={{ fontSize: '12px', marginLeft: 4 }}>
+                                                                ({course.rating}/5)
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {course.price && (
+                                                    <p style={{ color: '#f5222d', fontWeight: 'bold', fontSize: '16px', margin: '8px 0 0 0' }}>
+                                                        {course.price.toLocaleString('vi-VN')} VNĐ
+                                                    </p>
+                                                )}
+                                            </div>
+                                        }
+                                    />
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+
+                    {/* Pagination for all courses */}
+                    {allCoursesPagination.total > 0 && (
+                        <div style={{ textAlign: 'center', marginTop: 32 }}>
+                            <Pagination
+                                current={allCoursesPagination.current}
+                                pageSize={allCoursesPagination.pageSize}
+                                total={allCoursesPagination.total}
+                                onChange={handleAllCoursesPaginationChange}
+                                showSizeChanger
+                                showQuickJumper
+                                showTotal={(total, range) => 
+                                    `${range[0]}-${range[1]} của ${total} khóa học`
+                                }
+                                pageSizeOptions={['12', '24', '36', '48']}
+                            />
+                        </div>
+                    )}
+
+                    {allCourses.length === 0 && !allCoursesLoading && (
+                        <div style={{ textAlign: 'center', marginTop: 40 }}>
+                            <p>Không tìm thấy khóa học nào phù hợp với tiêu chí tìm kiếm.</p>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Lessons Modal */}
