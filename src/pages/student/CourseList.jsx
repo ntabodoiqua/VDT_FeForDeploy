@@ -377,14 +377,19 @@ const CourseList = () => {
                                                             <strong>Bài học:</strong> {course.totalLessons || 0}
                                                         </p>
                                                     </div>
-                                                    {course.rating && (
+                                                    {course.averageRating && (
                                                         <div>
-                                                            <Rate disabled defaultValue={course.rating} style={{ fontSize: '12px' }} />
+                                                            <Rate disabled defaultValue={course.averageRating} style={{ fontSize: '12px' }} />
                                                             <span style={{ fontSize: '12px', marginLeft: 4 }}>
-                                                                ({course.rating}/5)
+                                                                ({course.averageRating.toFixed(1)}/5)
                                                             </span>
                                                         </div>
                                                     )}
+                                                </div>
+                                                <div style={{ marginBottom: 8 }}>
+                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                        ⭐ {course.totalReviews && course.totalReviews > 0 ? `${course.totalReviews} đánh giá` : 'Chưa có đánh giá'}
+                                                    </Text>
                                                 </div>
                                                 <div style={{ marginBottom: 8 }}>
                                                     <Tag color="orange" style={{ marginBottom: 4 }}>
@@ -546,14 +551,19 @@ const CourseList = () => {
                                                             <strong>Bài học:</strong> {course.totalLessons || 0}
                                                         </p>
                                                     </div>
-                                                    {course.rating && (
+                                                    {course.averageRating && (
                                                         <div>
-                                                            <Rate disabled defaultValue={course.rating} style={{ fontSize: '12px' }} />
+                                                            <Rate disabled defaultValue={course.averageRating} style={{ fontSize: '12px' }} />
                                                             <span style={{ fontSize: '12px', marginLeft: 4 }}>
-                                                                ({course.rating}/5)
+                                                                ({course.averageRating.toFixed(1)}/5)
                                                             </span>
                                                         </div>
                                                     )}
+                                                </div>
+                                                <div style={{ marginBottom: 8 }}>
+                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                        ⭐ {course.totalReviews && course.totalReviews > 0 ? `${course.totalReviews} đánh giá` : 'Chưa có đánh giá'}
+                                                    </Text>
                                                 </div>
                                                 {course.price && (
                                                     <p style={{ color: '#f5222d', fontWeight: 'bold', fontSize: '16px', margin: '8px 0 0 0' }}>
@@ -727,6 +737,7 @@ const CourseList = () => {
                                     {enrollmentCount > 0 && (
                                         <p><strong>Số lượt đăng ký:</strong> {enrollmentCount} học viên</p>
                                     )}
+                                    <p><strong>Đánh giá:</strong> {course.averageRating ? `${course.averageRating.toFixed(1)}/5 ⭐ (${course.totalReviews || 0} đánh giá)` : '⭐ Chưa có đánh giá'}</p>
                                     {course.price && (
                                         <p><strong>Giá:</strong> {course.price.toLocaleString('vi-VN')} VNĐ</p>
                                     )}
