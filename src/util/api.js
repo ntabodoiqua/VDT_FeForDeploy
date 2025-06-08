@@ -406,6 +406,16 @@ const getPreviewStatusApi = (sessionId) => {
     return axios.get(`/lms/quiz-attempts/preview/${sessionId}/status`);
 };
 
+// API to sync totalLessons for all courses (Admin only)
+const syncAllCoursesTotalLessonsApi = () => {
+    return axios.post('/lms/courses/admin/sync-all-total-lessons');
+};
+
+// API to sync totalLessons for a specific course (Instructor/Admin)
+const syncCourseTotalLessonsApi = (courseId) => {
+    return axios.post(`/lms/courses/${courseId}/sync-total-lessons`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -498,5 +508,8 @@ export {
     startQuizPreviewApi,
     answerQuestionPreviewApi,
     submitQuizPreviewApi,
-    getPreviewStatusApi
+    getPreviewStatusApi,
+    // Sync total lessons
+    syncAllCoursesTotalLessonsApi,
+    syncCourseTotalLessonsApi
 }

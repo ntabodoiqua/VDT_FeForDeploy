@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, message, Image, Switch, Tooltip, Descriptions, Tag, Upload, DatePicker, Row, Col, Card, Collapse } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined, UserOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UploadOutlined, SearchOutlined, ClearOutlined, UserOutlined, SyncOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -11,7 +11,9 @@ import {
     updateCourseApi,
     deleteCourseApi,
     toggleCourseStatusApi,
-    fetchCategoriesApi
+    fetchCategoriesApi,
+    syncAllCoursesTotalLessonsApi,
+    syncCourseTotalLessonsApi
 } from '../../util/api';
 
 const { Option } = Select;
@@ -44,6 +46,8 @@ const CourseManagement = () => {
         createdDateRange: null,
         startDateRange: null,
     });
+    const [syncAllLoading, setSyncAllLoading] = useState(false);
+    const [syncingCourseIds, setSyncingCourseIds] = useState(new Set());
 
     const getDisplayImageUrl = (urlPath) => {
         if (!urlPath) return null;
@@ -124,6 +128,14 @@ const CourseManagement = () => {
             render: (instructor) => instructor ? `${instructor.firstName} ${instructor.lastName} (${instructor.username})` : 'N/A',
         },
         {
+            title: 'Số bài học',
+            dataIndex: 'totalLessons',
+            key: 'totalLessons',
+            width: 100,
+            align: 'center',
+            render: (totalLessons) => totalLessons || 0,
+        },
+        {
             title: 'Trạng thái',
             dataIndex: 'isActive',
             key: 'isActive',
@@ -139,25 +151,37 @@ const CourseManagement = () => {
         {
             title: 'Thao tác',
             key: 'action',
-            width: 180,
+            width: 220,
             align: 'center',
             render: (_, record) => (
-                <Space size="middle">
+                <Space size="small" wrap>
                     <Tooltip title="Xem chi tiết">
                         <Button
+                            size="small"
                             icon={<EyeOutlined />}
                             onClick={() => handleViewDetails(record)}
                         />
                     </Tooltip>
                     <Tooltip title="Xem giao diện học viên">
                         <Button
+                            size="small"
                             icon={<UserOutlined />}
                             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
                             onClick={() => navigate(`/admin/student-course-view/${record.id}`)}
                         />
                     </Tooltip>
+                    <Tooltip title="Đồng bộ số bài học">
+                        <Button
+                            size="small"
+                            icon={<SyncOutlined />}
+                            loading={syncingCourseIds.has(record.id)}
+                            onClick={() => handleSyncCourseTotalLessons(record.id)}
+                            style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
+                        />
+                    </Tooltip>
                     <Tooltip title="Sửa">
                         <Button
+                            size="small"
                             type="primary"
                             icon={<EditOutlined />}
                             onClick={() => handleEdit(record)}
@@ -165,6 +189,7 @@ const CourseManagement = () => {
                     </Tooltip>
                     <Tooltip title="Xóa">
                         <Button
+                            size="small"
                             danger
                             icon={<DeleteOutlined />}
                             onClick={() => handleDelete(record)}
@@ -459,6 +484,52 @@ const CourseManagement = () => {
         fetchCourses(1, pagination.pageSize, clearedFilters);
     };
 
+    // Handle sync all courses totalLessons
+    const handleSyncAllCoursesTotalLessons = async () => {
+        setSyncAllLoading(true);
+        try {
+            const response = await syncAllCoursesTotalLessonsApi();
+            const data = response;
+            if (data.code === 1000) {
+                message.success(data.message || 'Đồng bộ tổng số bài học cho tất cả khóa học thành công');
+                // Refresh course list to show updated totalLessons
+                fetchCourses(pagination.current, pagination.pageSize, filterValues);
+            } else {
+                message.error(data.message || 'Không thể đồng bộ tổng số bài học');
+            }
+        } catch (error) {
+            console.error('Error syncing all courses totalLessons:', error);
+            message.error('Lỗi khi đồng bộ tổng số bài học: ' + error.message);
+        } finally {
+            setSyncAllLoading(false);
+        }
+    };
+
+    // Handle sync specific course totalLessons
+    const handleSyncCourseTotalLessons = async (courseId) => {
+        setSyncingCourseIds(prev => new Set([...prev, courseId]));
+        try {
+            const response = await syncCourseTotalLessonsApi(courseId);
+            const data = response;
+            if (data.code === 1000) {
+                message.success(data.message || 'Đồng bộ tổng số bài học thành công');
+                // Refresh course list to show updated totalLessons
+                fetchCourses(pagination.current, pagination.pageSize, filterValues);
+            } else {
+                message.error(data.message || 'Không thể đồng bộ tổng số bài học');
+            }
+        } catch (error) {
+            console.error('Error syncing course totalLessons:', error);
+            message.error('Lỗi khi đồng bộ tổng số bài học: ' + error.message);
+        } finally {
+            setSyncingCourseIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(courseId);
+                return newSet;
+            });
+        }
+    };
+
     const renderFilterArea = () => (
         <Card style={{ marginBottom: 16 }}>
             <Form form={filterForm} layout="vertical" onFinish={onApplyFilters}>
@@ -520,7 +591,7 @@ const CourseManagement = () => {
 
     return (
         <div>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -532,6 +603,15 @@ const CourseManagement = () => {
                     }}
                 >
                     Thêm khóa học
+                </Button>
+                <Button
+                    type="default"
+                    icon={<SyncOutlined />}
+                    loading={syncAllLoading}
+                    onClick={handleSyncAllCoursesTotalLessons}
+                    style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
+                >
+                    Đồng bộ tất cả số bài học
                 </Button>
             </div>
 
