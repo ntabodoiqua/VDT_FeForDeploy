@@ -169,6 +169,24 @@ const fetchEnrollmentProgressApi = (enrollmentId) => {
     return axios.get(`/lms/enrollments/${enrollmentId}/progress`);
 };
 
+const fetchMyEnrollmentForCourseApi = (courseId) => {
+    return axios.get(`/lms/enrollments/my/course/${courseId}`);
+};
+
+// API to enroll in a course
+const enrollCourseApi = (courseId) => {
+    return axios.post(`/lms/enrollments/courses/${courseId}`);
+};
+
+// API to cancel enrollment from a course
+const cancelEnrollmentApi = (courseId) => {
+    return axios.delete(`/lms/enrollments/courses/${courseId}`);
+};
+
+const autoCompleteEmptyLessonApi = (enrollmentId, lessonId) => {
+    return axios.post(`/lms/enrollments/${enrollmentId}/progress/lesson/${lessonId}/auto-complete`);
+};
+
 // Review Management API calls
 const fetchPendingReviewsApi = (courseId, params) => {
     const queryParams = new URLSearchParams(params);
@@ -176,8 +194,16 @@ const fetchPendingReviewsApi = (courseId, params) => {
 };
 
 // Lấy danh sách đánh giá đã được xử lý cho admin
-const fetchHandledReviewsApi = (courseId, params) => {
-    const queryParams = new URLSearchParams(params);
+const fetchHandledReviewsApi = (courseId, params = {}) => {
+    // Clean up undefined/null params before creating query string
+    const cleanParams = {};
+    Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+            cleanParams[key] = params[key];
+        }
+    });
+    
+    const queryParams = new URLSearchParams(cleanParams);
     return axios.get(`/lms/course-reviews/handled/${courseId}?${queryParams.toString()}`);
 };
 
@@ -222,6 +248,11 @@ const fetchInstructorByIdApi = (instructorId) => {
 const fetchInstructorCoursesApi = (instructorId, params) => {
     const queryParams = new URLSearchParams(params);
     return axios.get(`/lms/instructors/public/${instructorId}/courses?${queryParams.toString()}`);
+};
+
+const fetchMyCoursesApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/enrollments/my?${queryParams.toString()}`);
 };
 
 const fetchInstructorStatisticsApi = () => {
@@ -436,6 +467,57 @@ const syncCourseTotalLessonsApi = (courseId) => {
     return axios.post(`/lms/courses/${courseId}/sync-total-lessons`);
 };
 
+// API to track document view (for students)
+const trackDocumentViewApi = (documentId) => {
+    return axios.post(`/lms/document-views/track?documentId=${documentId}`);
+};
+
+// Student Quiz Attempt API calls
+const startQuizAttemptApi = (quizId, courseId) => {
+    return axios.post(`/lms/quiz-attempts/quiz/${quizId}/start?courseId=${courseId}`);
+};
+
+const getCurrentQuizAttemptApi = (quizId, courseId) => {
+    return axios.get(`/lms/quiz-attempts/quiz/${quizId}/current?courseId=${courseId}`);
+};
+
+const answerQuestionApi = (attemptId, questionId, selectedAnswerId) => {
+    return axios.post(`/lms/quiz-attempts/${attemptId}/questions/${questionId}/answer`, {
+        selectedAnswerId: selectedAnswerId
+    });
+};
+
+const submitQuizAttemptApi = (attemptId) => {
+    return axios.post(`/lms/quiz-attempts/${attemptId}/submit`);
+};
+
+// Get quiz attempt history for student
+const getQuizAttemptHistoryApi = (quizId, courseId) => {
+    console.log('API Call: getQuizAttemptHistoryApi', { quizId, courseId });
+    return axios.get(`/lms/quiz-attempts/quiz/${quizId}/history?courseId=${courseId}`);
+};
+
+// Get best score for student in a quiz
+const getBestQuizScoreApi = (quizId, courseId) => {
+    console.log('API Call: getBestQuizScoreApi', { quizId, courseId });
+    return axios.get(`/lms/quiz-attempts/quiz/${quizId}/best-score?courseId=${courseId}`);
+};
+
+// Course Review API calls
+const createCourseReviewApi = (courseId, reviewData) => {
+    return axios.post(`/lms/course-reviews/${courseId}`, reviewData);
+};
+
+const fetchCourseReviewsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/course-reviews/${courseId}?${queryParams.toString()}`);
+};
+
+const fetchPublicCourseReviewsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/course-reviews/public/${courseId}?${queryParams.toString()}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -473,6 +555,10 @@ export {
     approveEnrollmentApi,
     rejectEnrollmentApi,
     fetchEnrollmentProgressApi,
+    fetchMyEnrollmentForCourseApi,
+    enrollCourseApi,
+    cancelEnrollmentApi,
+    autoCompleteEmptyLessonApi,
     // Reviews
     fetchPendingReviewsApi,
     fetchHandledReviewsApi,
@@ -486,6 +572,7 @@ export {
     fetchAllInstructorsApi,
     fetchInstructorByIdApi,
     fetchInstructorCoursesApi,
+    fetchMyCoursesApi,
     fetchInstructorStatisticsApi,
     fetchInstructorStatisticsFilteredApi,
     refreshTokenApi,
@@ -536,5 +623,18 @@ export {
     getPreviewStatusApi,
     // Sync total lessons
     syncAllCoursesTotalLessonsApi,
-    syncCourseTotalLessonsApi
+    syncCourseTotalLessonsApi,
+    // Document view tracking
+    trackDocumentViewApi,
+    // Student Quiz Attempts
+    startQuizAttemptApi,
+    getCurrentQuizAttemptApi,
+    answerQuestionApi,
+    submitQuizAttemptApi,
+    getQuizAttemptHistoryApi,
+    getBestQuizScoreApi,
+    // Course Reviews
+    createCourseReviewApi,
+    fetchCourseReviewsApi,
+    fetchPublicCourseReviewsApi
 }

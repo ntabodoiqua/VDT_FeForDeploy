@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { getHighestRole } from '../../util/authUtils';
 
 export const AuthContext = createContext();
 
@@ -18,11 +19,9 @@ export const AuthProvider = ({ children }) => {
             try {
                 const decoded = jwtDecode(token);
                 
-                // Role priority
-                const roleHierarchy = ['ROLE_ADMIN', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT'];
+                // Role priority - chọn role có quyền cao nhất
                 const userRoles = decoded.scope.split(' ');
-                
-                const highestRole = roleHierarchy.find(role => userRoles.includes(role));
+                const highestRole = getHighestRole(userRoles);
 
                 setAuth({
                     isAuthenticated: true,

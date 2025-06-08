@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext } from './components/context/auth.context';
 import ProtectedRoute from './components/ProtectedRoute';
+import { getDefaultRouteByRole } from './util/authUtils';
 import LoginPage from './pages/login';
 import RegisterPage from './pages/register';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -34,8 +35,10 @@ import InstructorQuizQuestionManagement from './pages/instructor/QuizQuestionMan
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
 import StudentCourseDetail from './pages/student/CourseDetail';
+import StudentLearning from './pages/student/StudentLearning';
 import StudentInstructorList from './pages/student/InstructorList';
 import MyAccount from './pages/student/MyAccount';
+import CourseReview from './pages/student/CourseReview';
 
 function App() {
     const { auth } = useContext(AuthContext);
@@ -97,18 +100,18 @@ function App() {
                 }>
                     <Route index element={<Navigate to="courses" replace />} />
                     <Route path="courses" element={<StudentCourses />} />
+                    <Route path="my-courses" element={<StudentCourses />} />
                     <Route path="available-courses" element={<StudentCourseList />} />
                     <Route path="instructors" element={<StudentInstructorList />} />
-                    <Route path="learning/:courseId" element={<StudentCourseDetail />} />
+                    <Route path="learning/:courseId" element={<StudentLearning />} />
+                    <Route path="course-review/:courseId" element={<CourseReview />} />
                     <Route path="my-account" element={<MyAccount />} />
                 </Route>
 
                 {/* Redirect root to appropriate dashboard based on role */}
                 <Route path="/" element={
                     auth.isAuthenticated ? (
-                        auth.role === 'ROLE_ADMIN' ? <Navigate to="/admin" replace /> :
-                        auth.role === 'ROLE_INSTRUCTOR' ? <Navigate to="/instructor" replace /> :
-                        <Navigate to="/student" replace />
+                        <Navigate to={getDefaultRouteByRole(auth.role)} replace />
                     ) : <Navigate to="/login" replace />
                 } />
 

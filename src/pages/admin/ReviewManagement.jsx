@@ -59,14 +59,22 @@ const ReviewManagement = () => {
             const params = {
                 page: page - 1,
                 size: pageSize,
-                isRejected: currentFilters.isRejected,
-                startDate: currentFilters.startDate?.format('YYYY-MM-DD'),
-                endDate: currentFilters.endDate?.format('YYYY-MM-DD'),
             };
-             // Clean up undefined/null params before sending
-             Object.keys(params).forEach(key => (params[key] === undefined || params[key] === null) && delete params[key]);
 
+            // Only add filter params if they have values
+            if (currentFilters.isRejected !== undefined && currentFilters.isRejected !== null && currentFilters.isRejected !== '') {
+                params.isRejected = currentFilters.isRejected;
+            }
+            if (currentFilters.startDate) {
+                params.startDate = currentFilters.startDate.format('YYYY-MM-DD');
+            }
+            if (currentFilters.endDate) {
+                params.endDate = currentFilters.endDate.format('YYYY-MM-DD');
+            }
+
+            console.log('Fetching handled reviews with params:', params);
             const response = await fetchHandledReviewsApi(selectedCourseId, params);
+            console.log('Handled reviews response:', response);
             if (response?.result) {
                 setHandledReviews(response.result.content || []);
                 setHandledPagination({ current: page, pageSize, total: response.result.totalElements || 0 });
@@ -76,7 +84,7 @@ const ReviewManagement = () => {
             }
         } catch (err) {
             setError('Không thể tải nhận xét đã xử lý.');
-            console.error(err);
+            console.error('Error fetching handled reviews:', err);
         } finally {
             setActionLoading(false);
         }
@@ -154,7 +162,7 @@ const ReviewManagement = () => {
     const handleFilterChange = () => {
         const formValues = form.getFieldsValue();
         const newFilters = {
-            isRejected: formValues.isRejected,
+            isRejected: formValues.isRejected === 'true' ? true : formValues.isRejected === 'false' ? false : undefined,
             startDate: formValues.dateRange?.[0] || null,
             endDate: formValues.dateRange?.[1] || null,
         };
@@ -189,7 +197,7 @@ const ReviewManagement = () => {
                             <Button type="primary" size="small" onClick={() => handleAction('approve', item.id)}>Duyệt</Button>,
                             <Button type="default" danger size="small" onClick={() => handleAction('reject', item.id)}>Từ chối</Button>
                         ] : null}
-                        extra={!isPending ? (item.rejected ? <Tag color="red">Đã từ chối</Tag> : <Tag color="green">Đã duyệt</Tag>) : null}
+                        extra={!isPending ? (item.isRejected ? <Tag color="red">Đã từ chối</Tag> : <Tag color="green">Đã duyệt</Tag>) : null}
                     >
                         <List.Item.Meta
                             avatar={<Avatar src={getFullImageUrl(item.student?.avatarUrl) || `https://i.pravatar.cc/150?u=${item.student?.id}`} />}

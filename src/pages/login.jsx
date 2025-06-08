@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../components/context/auth.context';
 import { ArrowLeftOutlined, UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import { jwtDecode } from 'jwt-decode';
+import { getHighestRole } from '../util/authUtils';
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -20,12 +21,15 @@ const LoginPage = () => {
                 localStorage.setItem("access_token", res.result.token);
                 // decode token để lấy username (sub)
                 const decoded = jwtDecode(res.result.token);
-                // Extract role from scope
-                const role = decoded.scope.split(' ')[0]; // Get first part of scope (e.g., ROLE_STUDENT)
+                
+                // Role priority - chọn role có quyền cao nhất
+                const userRoles = decoded.scope.split(' ');
+                const highestRole = getHighestRole(userRoles);
+                
                 setAuth({
                     isAuthenticated: true,
                     username: decoded.sub,
-                    role: role,
+                    role: highestRole,
                     scope: decoded.scope
                 });
                 notification.success({

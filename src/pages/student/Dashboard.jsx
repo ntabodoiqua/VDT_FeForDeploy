@@ -84,6 +84,29 @@ const StudentDashboard = () => {
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
+            {/* Floating toggle button - always visible */}
+            <Button
+                type="primary"
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+                style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: collapsed ? '20px' : '270px',
+                    zIndex: 1001,
+                    fontSize: '16px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    transition: 'left 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+                title={collapsed ? 'Mở sidebar' : 'Đóng sidebar'}
+            />
+            
             <Sider 
                 width={250} 
                 theme="light"

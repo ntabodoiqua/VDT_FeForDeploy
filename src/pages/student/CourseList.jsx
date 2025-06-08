@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Row, Col, Button, Input, Select, message, Modal, Tag, Rate, Spin, List, Typography, Pagination, Divider, Form, DatePicker, Space, Image, Avatar, Descriptions } from 'antd';
 import { SearchOutlined, ShoppingCartOutlined, TrophyOutlined, EyeOutlined, BookOutlined, PlayCircleOutlined, AppstoreOutlined, ClearOutlined, UserOutlined, ClockCircleOutlined, StarOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi, fetchCoursesApi, fetchCourseByIdApi } from '../../util/api';
+import { fetchPopularCoursesApi, fetchCategoriesApi, fetchPublicLessonsForCourseApi, fetchCoursesApi, fetchCourseByIdApi, enrollCourseApi, fetchMyEnrollmentForCourseApi } from '../../util/api';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -9,6 +10,7 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const CourseList = () => {
+    const navigate = useNavigate();
     const [popularCourses, setPopularCourses] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -45,6 +47,10 @@ const CourseList = () => {
         pageSize: 12,
         total: 0
     });
+
+    // New states for enrollment management
+    const [enrollmentStatuses, setEnrollmentStatuses] = useState({}); // courseId -> enrollment info
+    const [enrollmentLoading, setEnrollmentLoading] = useState({}); // courseId -> loading state
 
     // Helper function to get full image URL
     const getDisplayImageUrl = (urlPath) => {
@@ -198,11 +204,59 @@ const CourseList = () => {
         }
     };
 
+    // Function to check enrollment status for a course
+    const checkEnrollmentStatus = async (courseId) => {
+        try {
+            const response = await fetchMyEnrollmentForCourseApi(courseId);
+            const data = response.data || response;
+            
+            if (data.code === 1000 && data.result) {
+                setEnrollmentStatuses(prev => ({
+                    ...prev,
+                    [courseId]: data.result
+                }));
+                return data.result;
+            }
+        } catch (error) {
+            // If 404 or any error, means not enrolled
+            setEnrollmentStatuses(prev => ({
+                ...prev,
+                [courseId]: null
+            }));
+            return null;
+        }
+    };
+
+    // Function to check enrollment status for multiple courses
+    const checkMultipleEnrollmentStatuses = async (courseIds) => {
+        const promises = courseIds.map(courseId => checkEnrollmentStatus(courseId));
+        await Promise.allSettled(promises);
+    };
+
     useEffect(() => {
         fetchPopularCourses();
         fetchCategoriesList();
         fetchAllCourses(); // Load initial all courses
     }, []);
+
+    // Effect to check enrollment status when popular courses are loaded
+    useEffect(() => {
+        if (popularCourses.length > 0) {
+            const courseIds = popularCourses.map(courseData => {
+                const course = courseData.course || courseData;
+                return course.id;
+            });
+            checkMultipleEnrollmentStatuses(courseIds);
+        }
+    }, [popularCourses]);
+
+    // Effect to check enrollment status when all courses are loaded
+    useEffect(() => {
+        if (allCourses.length > 0) {
+            const courseIds = allCourses.map(course => course.id);
+            checkMultipleEnrollmentStatuses(courseIds);
+        }
+    }, [allCourses]);
 
     // Effect to refetch all courses when filters change  
     useEffect(() => {
@@ -247,15 +301,32 @@ const CourseList = () => {
     };
 
     const handleConfirmEnroll = async () => {
+        const course = selectedCourse.course || selectedCourse;
+        
         try {
-            // TODO: Implement API call to enroll in course
-            // const course = selectedCourse.course || selectedCourse;
-            // await enrollCourseApi(course.id);
-            message.success('Đăng ký khóa học thành công');
-            setModalVisible(false);
-            setSelectedCourse(null);
+            setEnrollmentLoading(prev => ({ ...prev, [course.id]: true }));
+            
+            const response = await enrollCourseApi(course.id);
+            const data = response.data || response;
+            
+            if (data.code === 1000) {
+                message.success('Đăng ký khóa học thành công');
+                // Update enrollment status
+                await checkEnrollmentStatus(course.id);
+                setModalVisible(false);
+                setSelectedCourse(null);
+            } else {
+                message.error(data.message || 'Không thể đăng ký khóa học');
+            }
         } catch (error) {
-            message.error('Không thể đăng ký khóa học');
+            console.error('Enrollment error:', error);
+            if (error.response?.data?.message) {
+                message.error(error.response.data.message);
+            } else {
+                message.error('Không thể đăng ký khóa học');
+            }
+        } finally {
+            setEnrollmentLoading(prev => ({ ...prev, [course.id]: false }));
         }
     };
 
@@ -281,6 +352,75 @@ const CourseList = () => {
 
     const handleAllCoursesPaginationChange = (page, pageSize) => {
         fetchAllCourses(page, pageSize, allCoursesFilterValues);
+    };
+
+    const handleGoToLearning = (courseData) => {
+        const course = courseData.course || courseData;
+        const enrollment = enrollmentStatuses[course.id];
+        
+        if (enrollment && enrollment.approvalStatus === 'APPROVED') {
+            // Navigate to learning page
+            navigate(`/student/learning/${course.id}`);
+        } else if (enrollment && enrollment.approvalStatus === 'PENDING') {
+            message.info('Đăng ký của bạn đang chờ phê duyệt');
+        } else {
+            message.warning('Bạn chưa đăng ký khóa học này');
+        }
+    };
+
+    const renderEnrollmentButton = (courseData) => {
+        const course = courseData.course || courseData;
+        const enrollment = enrollmentStatuses[course.id];
+        const isLoading = enrollmentLoading[course.id];
+
+        if (enrollment) {
+            if (enrollment.approvalStatus === 'APPROVED') {
+                return (
+                    <Button
+                        type="primary"
+                        icon={<BookOutlined />}
+                        onClick={() => handleGoToLearning(courseData)}
+                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    >
+                        Vào học
+                    </Button>
+                );
+            } else if (enrollment.approvalStatus === 'PENDING') {
+                return (
+                    <Button
+                        type="default"
+                        icon={<ClockCircleOutlined />}
+                        disabled
+                        style={{ color: '#faad14', borderColor: '#faad14' }}
+                    >
+                        Chờ duyệt
+                    </Button>
+                );
+            } else if (enrollment.approvalStatus === 'REJECTED') {
+                return (
+                    <Button
+                        type="default"
+                        disabled
+                        style={{ color: '#ff4d4f', borderColor: '#ff4d4f' }}
+                    >
+                        Bị từ chối
+                    </Button>
+                );
+            }
+        }
+
+        // Not enrolled or enrollment status unknown
+        return (
+            <Button
+                type="primary"
+                icon={<ShoppingCartOutlined />}
+                onClick={() => handleEnroll(courseData)}
+                disabled={!course.isActive}
+                loading={isLoading}
+            >
+                {course.isActive ? 'Đăng ký' : 'Đã đóng'}
+            </Button>
+        );
     };
 
     const filteredCourses = popularCourses.filter(courseData => {
@@ -377,14 +517,7 @@ const CourseList = () => {
                                         >
                                             Xem trước
                                         </Button>,
-                                        <Button
-                                            type="primary"
-                                            icon={<ShoppingCartOutlined />}
-                                            onClick={() => handleEnroll(courseData)}
-                                            disabled={!course.isActive}
-                                        >
-                                            {course.isActive ? 'Đăng ký' : 'Đã đóng'}
-                                        </Button>
+                                        renderEnrollmentButton(courseData)
                                     ]}
                                 >
                                     <Card.Meta
@@ -552,14 +685,7 @@ const CourseList = () => {
                                         >
                                             Xem trước
                                         </Button>,
-                                        <Button
-                                            type="primary"
-                                            icon={<ShoppingCartOutlined />}
-                                            onClick={() => handleEnroll(course)}
-                                            disabled={!course.isActive}
-                                        >
-                                            {course.isActive ? 'Đăng ký' : 'Đã đóng'}
-                                        </Button>
+                                        renderEnrollmentButton(course)
                                     ]}
                                 >
                                     <Card.Meta
@@ -1017,24 +1143,97 @@ const CourseList = () => {
                                         </div>
 
                                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                            <Button
-                                                type="primary"
-                                                size="large"
-                                                icon={<ShoppingCartOutlined />}
-                                                onClick={() => {
-                                                    setPreviewModalVisible(false);
-                                                    handleEnroll(previewCourse);
-                                                }}
-                                                disabled={!previewCourse.isActive}
-                                                style={{ 
-                                                    width: '100%',
-                                                    height: '50px',
-                                                    fontSize: '16px',
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                {previewCourse.isActive ? 'Đăng ký ngay' : 'Khóa học đã đóng'}
-                                            </Button>
+                                            <div style={{ width: '100%' }}>
+                                                {(() => {
+                                                    const enrollment = enrollmentStatuses[previewCourse.id];
+                                                    const isLoading = enrollmentLoading[previewCourse.id];
+
+                                                    if (enrollment) {
+                                                        if (enrollment.approvalStatus === 'APPROVED') {
+                                                            return (
+                                                                <Button
+                                                                    type="primary"
+                                                                    size="large"
+                                                                    icon={<BookOutlined />}
+                                                                    onClick={() => {
+                                                                        setPreviewModalVisible(false);
+                                                                        handleGoToLearning(previewCourse);
+                                                                    }}
+                                                                    style={{ 
+                                                                        width: '100%',
+                                                                        height: '50px',
+                                                                        fontSize: '16px',
+                                                                        fontWeight: 'bold',
+                                                                        backgroundColor: '#52c41a', 
+                                                                        borderColor: '#52c41a'
+                                                                    }}
+                                                                >
+                                                                    Vào học ngay
+                                                                </Button>
+                                                            );
+                                                        } else if (enrollment.approvalStatus === 'PENDING') {
+                                                            return (
+                                                                <Button
+                                                                    type="default"
+                                                                    size="large"
+                                                                    icon={<ClockCircleOutlined />}
+                                                                    disabled
+                                                                    style={{ 
+                                                                        width: '100%',
+                                                                        height: '50px',
+                                                                        fontSize: '16px',
+                                                                        fontWeight: 'bold',
+                                                                        color: '#faad14', 
+                                                                        borderColor: '#faad14'
+                                                                    }}
+                                                                >
+                                                                    Đang chờ phê duyệt
+                                                                </Button>
+                                                            );
+                                                        } else if (enrollment.approvalStatus === 'REJECTED') {
+                                                            return (
+                                                                <Button
+                                                                    type="default"
+                                                                    size="large"
+                                                                    disabled
+                                                                    style={{ 
+                                                                        width: '100%',
+                                                                        height: '50px',
+                                                                        fontSize: '16px',
+                                                                        fontWeight: 'bold',
+                                                                        color: '#ff4d4f', 
+                                                                        borderColor: '#ff4d4f'
+                                                                    }}
+                                                                >
+                                                                    Đăng ký bị từ chối
+                                                                </Button>
+                                                            );
+                                                        }
+                                                    }
+
+                                                    return (
+                                                        <Button
+                                                            type="primary"
+                                                            size="large"
+                                                            icon={<ShoppingCartOutlined />}
+                                                            onClick={() => {
+                                                                setPreviewModalVisible(false);
+                                                                handleEnroll(previewCourse);
+                                                            }}
+                                                            disabled={!previewCourse.isActive}
+                                                            loading={isLoading}
+                                                            style={{ 
+                                                                width: '100%',
+                                                                height: '50px',
+                                                                fontSize: '16px',
+                                                                fontWeight: 'bold'
+                                                            }}
+                                                        >
+                                                            {previewCourse.isActive ? 'Đăng ký ngay' : 'Khóa học đã đóng'}
+                                                        </Button>
+                                                    );
+                                                })()}
+                                            </div>
                                             
                                             <Button
                                                 type="default"
