@@ -450,13 +450,14 @@ const getCourseStudentQuizResultsApi = (courseId, params) => {
 };
 
 // Get student quiz history in course for instructor/admin
-const getStudentQuizHistoryInCourseApi = (courseId, studentId) => {
-    return axios.get(`/lms/quiz-attempts/course/${courseId}/student/${studentId}/history`);
-};
+export const getStudentQuizHistoryInCourseApi = (courseId, studentId) =>
+  axios.get(
+    `/lms/quiz-attempts/course/${courseId}/student/${studentId}/history`
+  );
 
 // Quiz Preview API calls (for instructor/admin to test quiz)
 const startQuizPreviewApi = (quizId) => {
-    return axios.post(`/lms/quiz-attempts/quiz/${quizId}/preview/start`);
+    return axios.post(`/lms/quiz-attempts/preview/start/${quizId}`);
 };
 
 const answerQuestionPreviewApi = (sessionId, questionId, selectedAnswerId) => {
@@ -533,6 +534,9 @@ const fetchPublicCourseReviewsApi = (courseId, params) => {
     const queryParams = new URLSearchParams(params);
     return axios.get(`/lms/course-reviews/public/${courseId}?${queryParams.toString()}`);
 };
+
+const getQuizAttemptsOverTimeApi = (quizId) =>
+  axios.get(`/lms/quiz-attempts/over-time/${quizId}`);
 
 export {
     createUserApi, loginApi,
@@ -635,7 +639,7 @@ export {
     // Course Quiz Statistics
     getCourseQuizStatisticsApi,
     getCourseStudentQuizResultsApi,
-    getStudentQuizHistoryInCourseApi,
+    
     // Quiz Preview
     startQuizPreviewApi,
     answerQuestionPreviewApi,
@@ -656,5 +660,6 @@ export {
     // Course Reviews
     createCourseReviewApi,
     fetchCourseReviewsApi,
-    fetchPublicCourseReviewsApi
+    fetchPublicCourseReviewsApi,
+    getQuizAttemptsOverTimeApi,
 }
