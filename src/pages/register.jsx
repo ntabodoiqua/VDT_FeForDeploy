@@ -1,16 +1,29 @@
-import React from 'react';
-import { Button, Col, Divider, Form, Input, notification, Row, DatePicker, Select } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Button, Col, Divider, Form, Input, notification, Row, DatePicker, Select, Card, Typography } from 'antd';
 import { createUserApi } from '../util/api';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftOutlined, UserOutlined, LockOutlined, IdcardOutlined, CalendarOutlined, MailOutlined, PhoneOutlined, FileTextOutlined, ManOutlined, WomanOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import {
+    ArrowLeftOutlined, UserOutlined, LockOutlined, IdcardOutlined, CalendarOutlined,
+    MailOutlined, PhoneOutlined, FileTextOutlined, ManOutlined, WomanOutlined, QuestionCircleOutlined
+} from '@ant-design/icons';
+import logo from '../assets/images/logo.png';
+
+const { Title } = Typography;
 
 const RegisterPage = () => {
     const navigate = useNavigate();
     const [form] = Form.useForm();
+    const [isFormVisible, setIsFormVisible] = useState(false);
+
+    useEffect(() => {
+        // Trigger the animation shortly after the component mounts
+        const timer = setTimeout(() => setIsFormVisible(true), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Validate họ và tên không chứa ký tự đặc biệt
     const nameValidator = (_, value) => {
-        if (!value) return Promise.reject('Không được để trống!');
+        if (!value) return Promise.resolve(); // Allow empty for non-required fields
         if (/[^a-zA-ZÀ-ỹà-ỹ\s]/.test(value)) {
             return Promise.reject('Không được chứa ký tự đặc biệt hoặc số!');
         }
@@ -43,7 +56,7 @@ const RegisterPage = () => {
     };
 
     const onFinish = async (values) => {
-        const userData = { username: values.username, password: values.password, firstName: values.firstName, lastName: values.lastName, dob: values.dob.format('YYYY-MM-DD'), email: values.email, phone: values.phone, bio: values.bio, gender: values.gender };
+        const userData = { ...values, dob: values.dob.format('YYYY-MM-DD') };
         try {
             const res = await createUserApi(userData);
             if (res && res.code === 1000) {
@@ -67,92 +80,115 @@ const RegisterPage = () => {
     };
 
     return (
-        <Row gutter={24} style={{ marginTop: "30px" }} justify="center">
-            <Col xs={24} md={16} lg={12}>
-                <fieldset style={{ padding: "15px", margin: "5px", border: "1px solid #ccc", borderRadius: "5px" }}>
-                    <legend>Đăng Ký Tài Khoản</legend>
-                    <Form form={form} name="register" onFinish={onFinish} autoComplete="off" layout='vertical'>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Tên đăng nhập" name="username" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }, { min: 3, message: 'Tên đăng nhập phải có ít nhất 3 ký tự!' }]}>
-                                    <Input prefix={<UserOutlined />} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }, { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự!' }]} hasFeedback>
-                                    <Input.Password prefix={<LockOutlined />} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Xác nhận mật khẩu" name="confirm" dependencies={["password"]} hasFeedback rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu!' }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('password') === value) { return Promise.resolve(); } return Promise.reject('Mật khẩu xác nhận không khớp!'); } })]}>
-                                    <Input.Password prefix={<LockOutlined />} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Ngày sinh" name="dob" rules={[{ validator: dobValidator }]}>
-                                    <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" suffixIcon={<CalendarOutlined />} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Họ" name="lastName" rules={[{ validator: nameValidator }]}>
-                                    <Input prefix={<IdcardOutlined />} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Tên" name="firstName" rules={[{ validator: nameValidator }]}>
-                                    <Input prefix={<IdcardOutlined />} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Vui lòng nhập email!' }, { type: 'email', message: 'Email không hợp lệ!' }]}>
-                                    <Input prefix={<MailOutlined />} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Số điện thoại" name="phone" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại!' }, { pattern: /^\d{9,11}$/, message: 'Số điện thoại không hợp lệ!' }]}>
-                                    <Input prefix={<PhoneOutlined />} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={24}>
-                                <Form.Item label="Bio" name="bio" rules={[{ required: true, message: 'Vui lòng nhập bio!' }, { max: 500, message: 'Bio tối đa 500 ký tự!' }]}>
-                                    <Input.TextArea rows={3} showCount maxLength={500} prefix={<FileTextOutlined />} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={24}>
-                                <Form.Item label="Giới tính" name="gender" rules={[{ required: true, message: 'Vui lòng chọn giới tính!' }]}>
-                                    <Select suffixIcon={<QuestionCircleOutlined />}>
-                                        <Select.Option value="MALE"><ManOutlined /> Nam</Select.Option>
-                                        <Select.Option value="FEMALE"><WomanOutlined /> Nữ</Select.Option>
-                                        <Select.Option value="OTHER"><QuestionCircleOutlined /> Khác</Select.Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={24}>
-                                <Form.Item>
-                                    <Button type="primary" htmlType="submit" style={{ width: '100%' }} icon={<UserOutlined />}> Đăng ký </Button>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </Form>
+        <div style={{
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px 20px'
+        }}>
+            <Card
+                style={{
+                    width: '100%',
+                    maxWidth: 800,
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                    borderRadius: 8,
+                    opacity: isFormVisible ? 1 : 0,
+                    transform: isFormVisible ? 'translateY(0)' : 'translateY(20px)',
+                    transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
+                }}
+            >
+                <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                    <Link to="/">
+                        <img src={logo} alt="Innolearn Logo" style={{ height: '50px', marginBottom: '10px' }} />
+                    </Link>
+                    <Title level={3} style={{ marginBottom: 0 }}>Đăng Ký Tài Khoản</Title>
+                </div>
+
+                <Form form={form} name="register" onFinish={onFinish} autoComplete="off" layout="vertical">
+                    <Row gutter={24}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Tên đăng nhập" name="username" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }, { min: 3, message: 'Tên đăng nhập phải có ít nhất 3 ký tự!' }]}>
+                                <Input prefix={<UserOutlined />} placeholder="Tên đăng nhập" size="large" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }, { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự!' }]} hasFeedback>
+                                <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" size="large" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={24}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Xác nhận mật khẩu" name="confirm" dependencies={["password"]} hasFeedback rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu!' }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('password') === value) { return Promise.resolve(); } return Promise.reject('Mật khẩu xác nhận không khớp!'); } })]}>
+                                <Input.Password prefix={<LockOutlined />} placeholder="Xác nhận mật khẩu" size="large" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Ngày sinh" name="dob" rules={[{ required: true, validator: dobValidator }]}>
+                                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="Chọn ngày sinh" size="large" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={24}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Họ" name="lastName" rules={[{ required: true, message: 'Vui lòng nhập họ!' }, { validator: nameValidator }]}>
+                                <Input prefix={<IdcardOutlined />} placeholder="Họ" size="large" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Tên" name="firstName" rules={[{ required: true, message: 'Vui lòng nhập tên!' }, { validator: nameValidator }]}>
+                                <Input prefix={<IdcardOutlined />} placeholder="Tên" size="large" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={24}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Vui lòng nhập email!' }, { type: 'email', message: 'Email không hợp lệ!' }]}>
+                                <Input prefix={<MailOutlined />} placeholder="Email" size="large" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Số điện thoại" name="phone" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại!' }, { pattern: /^\d{9,11}$/, message: 'Số điện thoại không hợp lệ!' }]}>
+                                <Input prefix={<PhoneOutlined />} placeholder="Số điện thoại" size="large" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={24}>
+                         <Col xs={24} sm={12}>
+                            <Form.Item label="Giới tính" name="gender" rules={[{ required: true, message: 'Vui lòng chọn giới tính!' }]}>
+                                <Select placeholder="Chọn giới tính" size="large">
+                                    <Select.Option value="MALE"><ManOutlined /> Nam</Select.Option>
+                                    <Select.Option value="FEMALE"><WomanOutlined /> Nữ</Select.Option>
+                                    <Select.Option value="OTHER"><QuestionCircleOutlined /> Khác</Select.Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                         <Col xs={24} sm={12}>
+                            <Form.Item label="Tiểu sử" name="bio" rules={[{ max: 500, message: 'Tiểu sử tối đa 500 ký tự!' }]}>
+                                <Input.TextArea rows={1} showCount maxLength={500} placeholder="Chia sẻ một chút về bạn..." size="large" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit" style={{ width: '100%' }} icon={<UserOutlined />} size="large">
+                            Đăng ký
+                        </Button>
+                    </Form.Item>
+                </Form>
+
+                <Divider>Hoặc</Divider>
+
+                <div style={{ textAlign: "center" }}>
+                    Đã có tài khoản? <Link to={"/login"}>Đăng nhập</Link>
+                </div>
+                <div style={{ textAlign: "center", marginTop: 16 }}>
                     <Link to={"/"}><ArrowLeftOutlined /> Quay lại trang chủ</Link>
-                    <Divider />
-                    <div style={{ textAlign: "center" }}> Đã có tài khoản? <Link to={"/login"}>Đăng nhập</Link> </div>
-                </fieldset>
-            </Col>
-        </Row>
-    )
+                </div>
+            </Card>
+        </div>
+    );
 }
 
 export default RegisterPage;

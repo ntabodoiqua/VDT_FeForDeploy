@@ -42,6 +42,7 @@ import StudentLearning from './pages/student/StudentLearning';
 import StudentInstructorList from './pages/student/InstructorList';
 import MyAccount from './pages/student/MyAccount';
 import CourseReview from './pages/student/CourseReview';
+import LandingPage from './pages/LandingPage';
 
 function App() {
     const { auth } = useContext(AuthContext);
@@ -114,11 +115,11 @@ function App() {
                     <Route path="my-account" element={<MyAccount />} />
                 </Route>
 
-                {/* Redirect root to appropriate dashboard based on role */}
+                {/* Redirect root to appropriate dashboard based on role or show Landing Page */}
                 <Route path="/" element={
                     auth.isAuthenticated ? (
                         <Navigate to={getDefaultRouteByRole(auth.role)} replace />
-                    ) : <Navigate to="/login" replace />
+                    ) : <LandingPage />
                 } />
 
                 {/* Fallback route */}
