@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag, Radio, Avatar, Space, Switch, Divider, Typography } from 'antd';
-import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined, TrophyOutlined, QuestionCircleOutlined, BarChartOutlined, CheckCircleOutlined, TeamOutlined, SettingOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined, TrophyOutlined, QuestionCircleOutlined, CheckCircleOutlined, BarChartOutlined, SettingOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi, fetchPopularCoursesApi, fetchQuizzesApi, fetchQuizSummaryApi, fetchTopInstructorsApi } from '../../util/api';
 import { Link } from 'react-router-dom';
 
@@ -151,13 +151,6 @@ const Statistics = () => {
             title: 'Hạng',
             key: 'rank',
             render: (text, record, index) => index + 1,
-            width: 60,
-        },
-        {
-            title: 'Tên Quiz',
-            dataIndex: 'title',
-            key: 'title',
-            ellipsis: true,
         },
         {
             title: 'Loại',
@@ -168,27 +161,23 @@ const Statistics = () => {
                     {type === 'PRACTICE' ? 'Luyện tập' : 'Đánh giá'}
                 </Tag>
             ),
-            width: 100,
         },
         {
             title: 'Người tạo',
             dataIndex: ['createdBy', 'firstName'],
             key: 'creator',
             render: (text, record) => `${record.createdBy?.firstName || ''} ${record.createdBy?.lastName || ''}`,
-            width: 120,
         },
         {
             title: 'Lượt thử',
             dataIndex: 'totalAttempts',
             key: 'totalAttempts',
-            width: 80,
         },
         {
             title: 'Tỷ lệ đạt',
             dataIndex: 'successRate',
             key: 'successRate',
             render: (rate) => `${rate}%`,
-            width: 80,
         },
         {
             title: 'Trạng thái',
@@ -199,7 +188,6 @@ const Statistics = () => {
                     {isActive ? 'Hoạt động' : 'Tạm dừng'}
                 </Tag>
             ),
-            width: 100,
         }
     ];
 
@@ -427,7 +415,7 @@ const Statistics = () => {
         {
             key: 'topInstructors',
             title: <><TrophyOutlined style={{ color: '#faad14' }} /> Top Giảng viên</>,
-            content: <Table columns={topInstructorsColumns} dataSource={topInstructors} rowKey="key" loading={loadingInstructors} pagination={false} size="small" />
+            content: <Table columns={topInstructorsColumns} dataSource={topInstructors} rowKey="key" loading={loadingInstructors} pagination={false} size="small" scroll={{ x: 'max-content' }} />
         },
         {
             key: 'popularCourses',
@@ -438,22 +426,22 @@ const Statistics = () => {
                     <Radio.Button value={10}>Top 10</Radio.Button>
                 </Radio.Group>
             ),
-            content: <Table columns={popularCoursesColumns} dataSource={popularCourses} rowKey="key" loading={loadingPopular} pagination={false} size="small" />
+            content: <Table columns={popularCoursesColumns} dataSource={popularCourses} rowKey="key" loading={loadingPopular} pagination={false} size="small" scroll={{ x: 'max-content' }} />
         },
         {
             key: 'topQuizzes',
             title: <><QuestionCircleOutlined /> Top Quiz được làm nhiều nhất</>,
-            content: <Table columns={topQuizzesColumns} dataSource={topQuizzes} rowKey="key" loading={loadingQuizStats} pagination={false} size="small" />
+            content: <Table columns={topQuizzesColumns} dataSource={topQuizzes} rowKey="key" loading={loadingQuizStats} pagination={false} size="small" scroll={{ x: 'max-content' }} />
         },
         {
             key: 'recentEnrollments',
             title: 'Đăng ký gần đây',
-            content: <Table columns={columns} dataSource={recentEnrollments} rowKey="key" loading={loading} pagination={false} size="small" />
+            content: <Table columns={columns} dataSource={recentEnrollments} rowKey="key" loading={loading} pagination={false} size="small" scroll={{ x: 'max-content' }} />
         },
         {
             key: 'recentReviews',
             title: 'Đánh giá gần đây',
-            content: <Table columns={reviewColumns} dataSource={recentReviews} rowKey="key" loading={loading} pagination={false} size="small" />
+            content: <Table columns={reviewColumns} dataSource={recentReviews} rowKey="key" loading={loading} pagination={false} size="small" scroll={{ x: 'max-content' }} />
         }
     ].filter(card => visibleSections[card.key]);
 
@@ -486,22 +474,22 @@ const Statistics = () => {
 
             {visibleSections.summaryStats && (
                 <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng số người dùng" value={statistics.totalUsers} prefix={<UserOutlined />} loading={loading} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng số khóa học" value={statistics.totalCourses} prefix={<BookOutlined />} loading={loading} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng số bài học" value={statistics.totalLessons} prefix={<FileTextOutlined />} loading={loading} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng số review" value={statistics.totalReviews} prefix={<StarOutlined />} loading={loading} />
                         </Card>
@@ -511,22 +499,22 @@ const Statistics = () => {
 
             {visibleSections.quizSummaryStats && (
                 <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng số Quiz" value={quizStatistics.totalQuizzes} prefix={<QuestionCircleOutlined />} loading={loadingQuizStats} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tổng lượt làm bài" value={quizStatistics.totalQuizAttempts} prefix={<BarChartOutlined />} loading={loadingQuizStats} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Tỷ lệ đạt Quiz" value={quizStatistics.quizSuccessRate} prefix={<CheckCircleOutlined />} suffix="%" precision={1} loading={loadingQuizStats} />
                         </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Card>
                             <Statistic title="Điểm trung bình" value={quizStatistics.averageQuizScore} prefix={<StarOutlined />} suffix="/10" precision={1} loading={loadingQuizStats} />
                         </Card>
