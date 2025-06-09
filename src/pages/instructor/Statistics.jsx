@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag, Radio, Switch, Progress } from 'antd';
-import { BookOutlined, FileTextOutlined, UserOutlined, StarOutlined, TrophyOutlined, CheckCircleOutlined, ClockCircleOutlined, PercentageOutlined } from '@ant-design/icons';
+import { BookOutlined, FileTextOutlined, UserOutlined, StarOutlined, TrophyOutlined, CheckCircleOutlined, ClockCircleOutlined, PercentageOutlined, QuestionCircleOutlined, BarChartOutlined } from '@ant-design/icons';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
-import { fetchInstructorStatisticsApi, fetchInstructorStatisticsFilteredApi } from '../../util/api';
+import { fetchInstructorStatisticsApi, fetchInstructorStatisticsFilteredApi, fetchQuizzesApi, fetchQuizSummaryApi } from '../../util/api';
 
 const { RangePicker } = DatePicker;
 
@@ -31,6 +31,16 @@ const Statistics = () => {
     const [enrollmentData, setEnrollmentData] = useState([]);
     const [categoryData, setCategoryData] = useState([]);
     const [ratingTrendData, setRatingTrendData] = useState([]);
+
+    // Quiz statistics
+    const [quizStatistics, setQuizStatistics] = useState({
+        totalQuizzes: 0,
+        totalQuizAttempts: 0,
+        averageQuizScore: 0,
+        quizSuccessRate: 0
+    });
+    const [topQuizzes, setTopQuizzes] = useState([]);
+    const [loadingQuizStats, setLoadingQuizStats] = useState(false);
 
     const popularCoursesColumns = [
         {
@@ -138,6 +148,79 @@ const Statistics = () => {
         }
     ];
 
+    // Fetch quiz statistics 
+    const fetchQuizStatistics = async () => {
+        setLoadingQuizStats(true);
+        try {
+            // Lấy danh sách quiz của instructor
+            const quizzesResponse = await fetchQuizzesApi({
+                page: 0,
+                size: 1000, // Lấy tất cả quiz để tính thống kê
+                sortBy: 'createdAt',
+                sortDir: 'desc'
+            });
+
+            if (quizzesResponse && quizzesResponse.code === 1000 && quizzesResponse.result) {
+                const quizzes = quizzesResponse.result.content || [];
+                
+                // Tính toán thống kê quiz
+                let totalAttempts = 0;
+                let totalScore = 0;
+                let totalPassed = 0;
+                let attemptCount = 0;
+                const quizSummaries = [];
+
+                // Lấy summary cho từng quiz để tính thống kê chi tiết
+                for (const quiz of quizzes.slice(0, 10)) { // Giới hạn 10 quiz đầu tiên
+                    try {
+                        const summaryResponse = await fetchQuizSummaryApi(quiz.id);
+                        if (summaryResponse && summaryResponse.code === 1000 && summaryResponse.result) {
+                            const summary = summaryResponse.result;
+                            totalAttempts += summary.totalAttempts || 0;
+                            totalPassed += summary.passedAttempts || 0;
+                            
+                            quizSummaries.push({
+                                key: quiz.id,
+                                title: quiz.title,
+                                type: quiz.type,
+                                totalAttempts: summary.totalAttempts || 0,
+                                passedAttempts: summary.passedAttempts || 0,
+                                successRate: summary.totalAttempts > 0 ? 
+                                    ((summary.passedAttempts / summary.totalAttempts) * 100).toFixed(1) : 0,
+                                isActive: quiz.isActive
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching summary for quiz ${quiz.id}:`, error);
+                    }
+                }
+
+                const averageScore = attemptCount > 0 ? (totalScore / attemptCount).toFixed(1) : 0;
+                const successRate = totalAttempts > 0 ? ((totalPassed / totalAttempts) * 100).toFixed(1) : 0;
+
+                setQuizStatistics({
+                    totalQuizzes: quizzes.length,
+                    totalQuizAttempts: totalAttempts,
+                    averageQuizScore: averageScore,
+                    quizSuccessRate: successRate
+                });
+
+                // Sắp xếp quiz theo số lượt thử nhiều nhất
+                const sortedQuizzes = quizSummaries.sort((a, b) => b.totalAttempts - a.totalAttempts);
+                setTopQuizzes(sortedQuizzes.slice(0, 5));
+
+                console.log('Quiz statistics loaded successfully');
+            } else {
+                message.error(quizzesResponse?.message || 'Không thể tải dữ liệu quiz.');
+            }
+        } catch (error) {
+            console.error('Error fetching quiz statistics:', error);
+            message.error('Lỗi khi tải thống kê quiz: ' + (error.message || 'Unknown error'));
+        } finally {
+            setLoadingQuizStats(false);
+        }
+    };
+
     const fetchStatistics = async () => {
         setLoading(true);
         try {
@@ -180,8 +263,59 @@ const Statistics = () => {
         }
     };
 
+    const topQuizzesColumns = [
+        {
+            title: 'Hạng',
+            key: 'rank',
+            render: (text, record, index) => index + 1,
+            width: 60,
+        },
+        {
+            title: 'Tên Quiz',
+            dataIndex: 'title',
+            key: 'title',
+            ellipsis: true,
+        },
+        {
+            title: 'Loại',
+            dataIndex: 'type',
+            key: 'type',
+            render: (type) => (
+                <Tag color={type === 'PRACTICE' ? 'blue' : 'orange'}>
+                    {type === 'PRACTICE' ? 'Luyện tập' : 'Đánh giá'}
+                </Tag>
+            ),
+            width: 100,
+        },
+        {
+            title: 'Lượt thử',
+            dataIndex: 'totalAttempts',
+            key: 'totalAttempts',
+            width: 80,
+        },
+        {
+            title: 'Tỷ lệ đạt',
+            dataIndex: 'successRate',
+            key: 'successRate',
+            render: (rate) => `${rate}%`,
+            width: 80,
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'isActive',
+            key: 'isActive',
+            render: (isActive) => (
+                <Tag color={isActive ? 'green' : 'red'}>
+                    {isActive ? 'Hoạt động' : 'Tạm dừng'}
+                </Tag>
+            ),
+            width: 100,
+        }
+    ];
+
     useEffect(() => {
         fetchStatistics();
+        fetchQuizStatistics();
     }, []);
 
     const handleDateRangeChange = async (dates) => {
@@ -338,6 +472,54 @@ const Statistics = () => {
                 </Col>
             </Row>
 
+            {/* Quiz Statistics Cards */}
+            <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={6}>
+                    <Card>
+                        <Statistic
+                            title="Tổng số Quiz"
+                            value={quizStatistics.totalQuizzes}
+                            prefix={<QuestionCircleOutlined />}
+                            loading={loadingQuizStats}
+                        />
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card>
+                        <Statistic
+                            title="Tổng lượt làm bài"
+                            value={quizStatistics.totalQuizAttempts}
+                            prefix={<BarChartOutlined />}
+                            loading={loadingQuizStats}
+                        />
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card>
+                        <Statistic
+                            title="Tỷ lệ đạt Quiz"
+                            value={quizStatistics.quizSuccessRate}
+                            prefix={<CheckCircleOutlined />}
+                            suffix="%"
+                            precision={1}
+                            loading={loadingQuizStats}
+                        />
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card>
+                        <Statistic
+                            title="Điểm trung bình"
+                            value={quizStatistics.averageQuizScore}
+                            prefix={<StarOutlined />}
+                            suffix="/10"
+                            precision={1}
+                            loading={loadingQuizStats}
+                        />
+                    </Card>
+                </Col>
+            </Row>
+
             {/* Charts Section */}
             {showCharts && (
                 <Row gutter={16} style={{ marginTop: 16 }}>
@@ -465,20 +647,40 @@ const Statistics = () => {
                 </Col>
             </Row>
 
-            <Card
-                title="Đánh giá gần đây"
-                style={{ marginTop: 16 }}
-            >
-                <Table
-                    columns={reviewColumns}
-                    dataSource={recentReviews}
-                    rowKey="key"
-                    loading={loading}
-                    pagination={false}
-                />
-            </Card>
+            <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={12}>
+                    <Card title="Đánh giá gần đây">
+                        <Table
+                            columns={reviewColumns}
+                            dataSource={recentReviews}
+                            rowKey="key"
+                            loading={loading}
+                            pagination={false}
+                        />
+                    </Card>
+                </Col>
+                <Col span={12}>
+                    <Card
+                        title={
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <QuestionCircleOutlined style={{ marginRight: 8 }} />
+                                <span>Top Quiz được làm nhiều nhất</span>
+                            </div>
+                        }
+                    >
+                        <Table
+                            columns={topQuizzesColumns}
+                            dataSource={topQuizzes}
+                            rowKey="key"
+                            loading={loadingQuizStats}
+                            pagination={false}
+                            size="small"
+                        />
+                    </Card>
+                </Col>
+            </Row>
         </div>
     );
 };
 
-export default Statistics; 
+export default Statistics;

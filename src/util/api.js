@@ -438,6 +438,22 @@ const fetchQuizAttemptsApi = (quizId, params) => {
     return axios.get(`/lms/quiz-attempts/quiz/${quizId}?${queryParams.toString()}`);
 };
 
+// Get course quiz statistics for instructor/admin
+const getCourseQuizStatisticsApi = (courseId) => {
+    return axios.get(`/lms/quiz-attempts/course/${courseId}/statistics`);
+};
+
+// Get student quiz results in course for instructor/admin
+const getCourseStudentQuizResultsApi = (courseId, params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/quiz-attempts/course/${courseId}/student-results?${queryParams.toString()}`);
+};
+
+// Get student quiz history in course for instructor/admin
+const getStudentQuizHistoryInCourseApi = (courseId, studentId) => {
+    return axios.get(`/lms/quiz-attempts/course/${courseId}/student/${studentId}/history`);
+};
+
 // Quiz Preview API calls (for instructor/admin to test quiz)
 const startQuizPreviewApi = (quizId) => {
     return axios.post(`/lms/quiz-attempts/quiz/${quizId}/preview/start`);
@@ -616,6 +632,10 @@ export {
     reorderQuizQuestionsApi,
     // Quiz Attempts
     fetchQuizAttemptsApi,
+    // Course Quiz Statistics
+    getCourseQuizStatisticsApi,
+    getCourseStudentQuizResultsApi,
+    getStudentQuizHistoryInCourseApi,
     // Quiz Preview
     startQuizPreviewApi,
     answerQuestionPreviewApi,
