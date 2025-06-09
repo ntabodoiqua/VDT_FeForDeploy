@@ -250,9 +250,17 @@ const fetchInstructorCoursesApi = (instructorId, params) => {
     return axios.get(`/lms/instructors/public/${instructorId}/courses?${queryParams.toString()}`);
 };
 
+const getCoursesForLessonApi = (lessonId) => {
+    return axios.get(`/lms/lessons/${lessonId}/courses`);
+};
+
+const getLessonQuizStatsInCourseApi = (lessonId, courseId) => {
+    return axios.get(`/lms/lessons/${lessonId}/course/${courseId}/quiz-stats`);
+};
+
 const fetchMyCoursesApi = (params) => {
     const queryParams = new URLSearchParams(params);
-    return axios.get(`/lms/enrollments/my?${queryParams.toString()}`);
+    return axios.get(`/lms/courses/my?${queryParams.toString()}`);
 };
 
 const fetchInstructorStatisticsApi = () => {
@@ -592,6 +600,8 @@ export {
     fetchAllInstructorsApi,
     fetchInstructorByIdApi,
     fetchInstructorCoursesApi,
+    getCoursesForLessonApi,
+    getLessonQuizStatsInCourseApi,
     fetchMyCoursesApi,
     fetchInstructorStatisticsApi,
     fetchInstructorStatisticsFilteredApi,

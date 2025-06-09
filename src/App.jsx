@@ -18,6 +18,9 @@ import EnrollmentManagement from './pages/admin/EnrollmentManagement';
 import ReviewManagement from './pages/admin/ReviewManagement';
 import AdminStudentCourseView from './pages/admin/StudentCourseView';
 import AdminStudentLessonView from './pages/admin/StudentLessonView';
+import AdminQuizManagement from './pages/admin/QuizManagement';
+import AdminQuizQuestionManagement from './pages/admin/QuizQuestionManagement';
+import AdminInstructorManagement from './pages/admin/InstructorManagement';
 import InstructorCourseManagement from './pages/instructor/CourseManagement';
 import InstructorLessonManagement from './pages/instructor/LessonManagement';
 import InstructorStatistics from './pages/instructor/Statistics';
@@ -67,6 +70,9 @@ function App() {
                     <Route path="reviews" element={<ReviewManagement />} />
                     <Route path="student-course-view/:courseId" element={<AdminStudentCourseView />} />
                     <Route path="student-lesson-view/:lessonId" element={<AdminStudentLessonView />} />
+                    <Route path="quiz-management" element={<AdminQuizManagement />} />
+                    <Route path="quiz-questions/:quizId" element={<AdminQuizQuestionManagement />} />
+                    <Route path="instructor-management" element={<AdminInstructorManagement />} />
                 </Route>
 
                 {/* Protected routes for INSTRUCTOR */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, List, Upload, Divider, InputNumber } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, List, Upload, Divider, InputNumber, Card, Drawer, Dropdown, Menu, Tag } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined, UserOutlined, QuestionCircleOutlined, MoreOutlined, BarChartOutlined } from '@ant-design/icons';
 import LargeFileUpload from '../../components/Upload/LargeFileUpload';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -15,8 +15,11 @@ import {
     uploadLessonDocumentApi,
     deleteLessonDocumentApi,
     downloadLessonDocumentApi,
-    createQuizApi
+    createQuizApi,
+    getCoursesForLessonApi,
+    getLessonQuizStatsInCourseApi
 } from '../../util/api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -57,6 +60,14 @@ const LessonManagement = () => {
     const [createQuizModalVisible, setCreateQuizModalVisible] = useState(false);
     const [selectedLessonForQuiz, setSelectedLessonForQuiz] = useState(null);
     const [quizForm] = Form.useForm();
+
+    const [quizStatsDrawerVisible, setQuizStatsDrawerVisible] = useState(false);
+    const [selectedLessonForStats, setSelectedLessonForStats] = useState(null);
+    const [coursesForLesson, setCoursesForLesson] = useState([]);
+    const [selectedCourseIdForStats, setSelectedCourseIdForStats] = useState(null);
+    const [lessonQuizStats, setLessonQuizStats] = useState(null);
+    const [loadingCoursesForLesson, setLoadingCoursesForLesson] = useState(false);
+    const [loadingLessonQuizStats, setLoadingLessonQuizStats] = useState(false);
 
     const handleFilterSubmit = (values) => {
         const newFilters = { ...values };
@@ -126,53 +137,59 @@ const LessonManagement = () => {
         {
             title: 'Thao tác',
             key: 'action',
-            width: 300,
+            width: 180,
             align: 'center',
-            render: (_, record) => (
-                <Space size="middle">
-                    <Tooltip title="Xem chi tiết">
-                        <Button
-                            type="dashed"
-                            icon={<EyeOutlined />}
-                            onClick={() => handleViewDetails(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Xem giao diện học viên">
-                        <Button
-                            icon={<UserOutlined />}
-                            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
-                            onClick={() => navigate(`/instructor/student-lesson-view/${record.id}`)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Sửa bài học">
-                        <Button
-                            type="primary"
-                            icon={<EditOutlined />}
-                            onClick={() => handleEdit(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Quản lý tài liệu">
-                        <Button
-                            icon={<FileTextOutlined />}
-                            onClick={() => handleViewLessonDocuments(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Tạo Quiz">
-                        <Button
-                            icon={<QuestionCircleOutlined />}
-                            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1', color: 'white' }}
-                            onClick={() => handleCreateQuiz(record)}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Xóa bài học">
-                        <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDelete(record)}
-                        />
-                    </Tooltip>
-                </Space>
-            ),
+            render: (_, record) => {
+                const moreMenuItems = [
+                    {
+                        key: 'student-view',
+                        icon: <UserOutlined />,
+                        label: 'Giao diện học viên',
+                        onClick: () => navigate(`/instructor/student-lesson-view/${record.id}`),
+                    },
+                    {
+                        key: 'docs',
+                        icon: <FileTextOutlined />,
+                        label: 'Quản lý tài liệu',
+                        onClick: () => handleViewLessonDocuments(record),
+                    },
+                    {
+                        key: 'create-quiz',
+                        icon: <QuestionCircleOutlined />,
+                        label: 'Tạo Quiz',
+                        onClick: () => handleCreateQuiz(record),
+                    },
+                    {
+                        key: 'quiz-stats',
+                        icon: <BarChartOutlined />,
+                        label: 'Thống kê Quiz',
+                        onClick: () => handleOpenQuizStats(record),
+                    },
+                    {
+                        key: 'delete',
+                        icon: <DeleteOutlined />,
+                        label: 'Xóa bài học',
+                        onClick: () => handleDelete(record),
+                        danger: true,
+                    },
+                ];
+
+                return (
+                    <Space size="small">
+                        <Tooltip title="Xem chi tiết">
+                            <Button icon={<EyeOutlined />} onClick={() => handleViewDetails(record)} />
+                        </Tooltip>
+                        <Tooltip title="Sửa bài học">
+                            <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+                        </Tooltip>
+                        <Dropdown menu={{ items: moreMenuItems }} trigger={["click"]}>
+                            <Tooltip title="Thao tác khác">
+                                <Button icon={<MoreOutlined />} />
+                            </Tooltip>
+                        </Dropdown>
+                    </Space>
+                )
+            },
         },
     ];
 
@@ -472,6 +489,56 @@ const LessonManagement = () => {
             console.error("Create quiz error:", error);
             message.error('Có lỗi xảy ra khi tạo quiz.');
         }
+    };
+
+    const handleOpenQuizStats = async (lesson) => {
+        setSelectedLessonForStats(lesson);
+        setQuizStatsDrawerVisible(true);
+        setLoadingCoursesForLesson(true);
+        try {
+            const response = await getCoursesForLessonApi(lesson.id);
+            if (response.code === 1000 && response.result) {
+                setCoursesForLesson(response.result || []);
+            } else {
+                message.error(response.message || 'Không thể tải danh sách khóa học cho bài học này.');
+                setCoursesForLesson([]);
+            }
+        } catch (error) {
+            message.error('Lỗi khi tải danh sách khóa học.');
+            setCoursesForLesson([]);
+        } finally {
+            setLoadingCoursesForLesson(false);
+        }
+    };
+
+    const handleCourseSelectForStats = async (courseId) => {
+        setSelectedCourseIdForStats(courseId);
+        if (courseId) {
+            setLoadingLessonQuizStats(true);
+            setLessonQuizStats(null);
+            try {
+                const response = await getLessonQuizStatsInCourseApi(selectedLessonForStats.id, courseId);
+                if (response.code === 1000) {
+                    setLessonQuizStats(response.result);
+                } else {
+                    message.error(response.message || 'Không thể tải thống kê quiz.');
+                }
+            } catch (error) {
+                message.error('Lỗi khi tải thống kê quiz.');
+            } finally {
+                setLoadingLessonQuizStats(false);
+            }
+        } else {
+            setLessonQuizStats(null);
+        }
+    };
+
+    const handleCloseQuizStatsDrawer = () => {
+        setQuizStatsDrawerVisible(false);
+        setSelectedLessonForStats(null);
+        setCoursesForLesson([]);
+        setSelectedCourseIdForStats(null);
+        setLessonQuizStats(null);
     };
 
     const handleSubmit = async (values) => {
@@ -931,6 +998,76 @@ const LessonManagement = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            <Drawer
+                title={`Thống kê Quiz cho bài học: ${selectedLessonForStats?.title || ''}`}
+                width={1000}
+                onClose={handleCloseQuizStatsDrawer}
+                open={quizStatsDrawerVisible}
+            >
+                <Spin spinning={loadingCoursesForLesson}>
+                    <Form layout="vertical">
+                        <Form.Item label="Chọn khóa học để xem thống kê">
+                            <Select
+                                placeholder="Chọn một khóa học"
+                                style={{ width: 400 }}
+                                value={selectedCourseIdForStats}
+                                onChange={handleCourseSelectForStats}
+                                allowClear
+                            >
+                                {coursesForLesson.map(course => (
+                                    <Option key={course.id} value={course.id}>{course.title}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Form>
+                </Spin>
+
+                {loadingLessonQuizStats && (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                        <Spin size="large" />
+                    </div>
+                )}
+
+                {!selectedCourseIdForStats && !loadingLessonQuizStats && (
+                    <p>Vui lòng chọn một khóa học để xem thống kê.</p>
+                )}
+
+                {lessonQuizStats && !loadingLessonQuizStats && (
+                    <Row gutter={[16, 16]}>
+                        <Col span={24}>
+                            <Card title="Phổ điểm của học viên (kết quả tốt nhất)">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={lessonQuizStats.scoreDistribution}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="range" />
+                                        <YAxis allowDecimals={false} />
+                                        <RechartsTooltip />
+                                        <Legend />
+                                        <Bar dataKey="count" name="Số lượng học viên" fill="#8884d8" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </Card>
+                        </Col>
+                        <Col span={24}>
+                            <Card title="Kết quả chi tiết của học viên (kết quả tốt nhất)">
+                                <Table
+                                    dataSource={lessonQuizStats.studentResults}
+                                    rowKey={record => `${record.studentId}-${record.quizId}`}
+                                    columns={[
+                                        { title: 'Học viên', dataIndex: 'studentName', key: 'studentName' },
+                                        { title: 'Quiz', dataIndex: 'quizTitle', key: 'quizTitle' },
+                                        { title: 'Điểm', dataIndex: 'score', key: 'score', render: (score, record) => `${score.toFixed(1)}/${record.maxScore.toFixed(1)}` },
+                                        { title: 'Phần trăm', dataIndex: 'percentage', key: 'percentage', render: (p) => `${p.toFixed(1)}%` },
+                                        { title: 'Kết quả', dataIndex: 'isPassed', key: 'isPassed', render: (isPassed) => isPassed ? <Tag color="success">Đạt</Tag> : <Tag color="error">Chưa đạt</Tag> },
+                                    ]}
+                                    pagination={{ pageSize: 5 }}
+                                />
+                            </Card>
+                        </Col>
+                    </Row>
+                )}
+            </Drawer>
         </div>
     );
 };

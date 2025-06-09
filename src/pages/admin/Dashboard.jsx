@@ -13,7 +13,9 @@ import {
     MessageOutlined,
     TeamOutlined,
     MenuUnfoldOutlined,
-    MenuFoldOutlined
+    MenuFoldOutlined,
+    QuestionCircleOutlined,
+    SolutionOutlined as UserManagementIcon,
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -45,6 +47,12 @@ const AdminDashboard = () => {
             icon: <UserOutlined />,
             label: 'Quản lý người dùng',
             onClick: () => navigate('/admin/users')
+        },
+        {
+            key: 'instructor-management',
+            icon: <UserManagementIcon />,
+            label: 'Quản lý giảng viên',
+            onClick: () => navigate('/admin/instructor-management')
         },
         {
             key: 'newCourseLessonManagement',
@@ -79,6 +87,12 @@ const AdminDashboard = () => {
                     icon: <LinkOutlined />,
                     label: 'Liên kết Khóa học - Bài học',
                     onClick: () => navigate('/admin/course-lesson-management')
+                },
+                {
+                    key: 'quiz-management',
+                    icon: <QuestionCircleOutlined />,
+                    label: 'Quản lý Quiz',
+                    onClick: () => navigate('/admin/quiz-management')
                 }
             ]
         },
@@ -125,13 +139,15 @@ const AdminDashboard = () => {
         if (location.pathname.startsWith('/admin/course-lesson-management')) selected = 'course-lesson-management';
         if (location.pathname.startsWith('/admin/enrollments')) selected = 'enrollments';
         if (location.pathname.startsWith('/admin/reviews')) selected = 'reviews';
+        if (location.pathname.startsWith('/admin/quiz-management') || location.pathname.startsWith('/admin/quiz-questions')) selected = 'quiz-management';
+        if (location.pathname.startsWith('/admin/instructor-management')) selected = 'instructor-management';
         
         return selected;
     };
 
     const getDefaultOpenKeys = () => {
         const currentPath = location.pathname;
-        if (currentPath.includes('/admin/courses') || currentPath.includes('/admin/course-categories') || currentPath.includes('/admin/lessons') || currentPath.includes('/admin/course-lesson-management')) {
+        if (currentPath.includes('/admin/courses') || currentPath.includes('/admin/course-categories') || currentPath.includes('/admin/lessons') || currentPath.includes('/admin/course-lesson-management') || currentPath.includes('/admin/quiz-management') || currentPath.includes('/admin/quiz-questions')) {
             return ['newCourseLessonManagement', 'newCourseManagementSubmenu'];
         }
         if (currentPath.includes('/admin/enrollments') || currentPath.includes('/admin/reviews')) {

@@ -28,6 +28,8 @@ import {
   Statistic,
   Spin,
   Collapse,
+  Dropdown,
+  Menu,
 } from "antd";
 import {
   EditOutlined,
@@ -46,6 +48,7 @@ import {
   StarOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 import {
   BarChart,
@@ -241,62 +244,59 @@ const CourseManagement = () => {
     {
       title: "Thao tác",
       key: "action",
-      width: 200,
+      width: 180,
       align: "center",
-      render: (_, record) => (
-        <Space size="middle">
-          <Tooltip title="Xem chi tiết">
-            <Button
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xem giao diện học viên">
-            <Button
-              icon={<UserOutlined />}
-              style={{
-                backgroundColor: "#52c41a",
-                borderColor: "#52c41a",
-                color: "white",
-              }}
-              onClick={() =>
-                navigate(`/instructor/student-course-view/${record.id}`)
-              }
-            />
-          </Tooltip>
-          <Tooltip title="Sửa">
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Quản lý tài liệu">
-            <Button
-              icon={<FileTextOutlined />}
-              onClick={() => handleViewDocuments(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Thống kê Quiz">
-            <Button
-              icon={<BarChartOutlined />}
-              style={{
-                backgroundColor: "#fa8c16",
-                borderColor: "#fa8c16",
-                color: "white",
-              }}
-              onClick={() => handleViewQuizStatistics(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-            />
-          </Tooltip>
-        </Space>
-      ),
+      render: (_, record) => {
+        const moreMenuItems = [
+          {
+            key: 'student-view',
+            icon: <UserOutlined />,
+            label: 'Xem giao diện học viên',
+            onClick: () => navigate(`/instructor/student-course-view/${record.id}`),
+          },
+          {
+            key: 'docs',
+            icon: <FileTextOutlined />,
+            label: 'Quản lý tài liệu',
+            onClick: () => handleViewDocuments(record),
+          },
+          {
+            key: 'quiz-stats',
+            icon: <BarChartOutlined />,
+            label: 'Thống kê Quiz',
+            onClick: () => handleViewQuizStatistics(record),
+          },
+        ];
+        return (
+          <Space size="small">
+            <Tooltip title="Xem chi tiết">
+              <Button
+                icon={<EyeOutlined />}
+                onClick={() => handleViewDetails(record)}
+              />
+            </Tooltip>
+            <Tooltip title="Sửa">
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
+              />
+            </Tooltip>
+            <Tooltip title="Xóa">
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleDelete(record)}
+              />
+            </Tooltip>
+            <Dropdown menu={{ items: moreMenuItems }} trigger={["click"]}>
+              <Tooltip title="Thao tác khác">
+                <Button icon={<MoreOutlined />} />
+              </Tooltip>
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 

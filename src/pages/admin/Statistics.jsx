@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag, Radio } from 'antd';
-import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined, TrophyOutlined, QuestionCircleOutlined, BarChartOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi, fetchPopularCoursesApi, fetchQuizzesApi, fetchQuizSummaryApi } from '../../util/api';
+import { Card, Row, Col, Statistic, Table, DatePicker, message, Rate, Tag, Radio, Avatar, Space, Switch, Divider, Typography } from 'antd';
+import { UserOutlined, BookOutlined, FileTextOutlined, StarOutlined, TrophyOutlined, QuestionCircleOutlined, BarChartOutlined, CheckCircleOutlined, TeamOutlined, SettingOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { fetchUsersApi, fetchCoursesApi, fetchAllSystemLessonsApi, fetchAllReviewsApi, fetchAllEnrollmentsApi, fetchPopularCoursesApi, fetchQuizzesApi, fetchQuizSummaryApi, fetchTopInstructorsApi } from '../../util/api';
 import { Link } from 'react-router-dom';
 
 const { RangePicker } = DatePicker;
+const { Title } = Typography;
 
 const Statistics = () => {
     const [loading, setLoading] = useState(false);
@@ -20,6 +21,10 @@ const Statistics = () => {
     const [popularCoursesLimit, setPopularCoursesLimit] = useState(5);
     const [loadingPopular, setLoadingPopular] = useState(false);
 
+    // Instructor statistics
+    const [topInstructors, setTopInstructors] = useState([]);
+    const [loadingInstructors, setLoadingInstructors] = useState(false);
+
     // Quiz statistics
     const [quizStatistics, setQuizStatistics] = useState({
         totalQuizzes: 0,
@@ -29,6 +34,21 @@ const Statistics = () => {
     });
     const [topQuizzes, setTopQuizzes] = useState([]);
     const [loadingQuizStats, setLoadingQuizStats] = useState(false);
+    
+    // Visibility state
+    const [visibleSections, setVisibleSections] = useState({
+        summaryStats: true,
+        quizSummaryStats: true,
+        recentEnrollments: true,
+        popularCourses: true,
+        recentReviews: true,
+        topQuizzes: true,
+        topInstructors: true,
+    });
+
+    const handleVisibilityChange = (checked, section) => {
+        setVisibleSections(prev => ({ ...prev, [section]: checked }));
+    };
 
     const popularCoursesColumns = [
         {
@@ -183,6 +203,49 @@ const Statistics = () => {
         }
     ];
 
+    const topInstructorsColumns = [
+        {
+            title: 'Hạng',
+            key: 'rank',
+            render: (text, record, index) => index + 1,
+            width: 60,
+        },
+        {
+            title: 'Giảng viên',
+            key: 'name',
+            render: (text, record) => (
+                <Space>
+                    <Avatar src={record.avatarUrl && `http://localhost:8080/lms${record.avatarUrl}`} icon={<UserOutlined />} />
+                    <span>{`${record.lastName} ${record.firstName}`}</span>
+                </Space>
+            )
+        },
+        {
+            title: 'Học viên',
+            dataIndex: 'totalStudents',
+            key: 'totalStudents',
+            width: 100,
+        },
+        {
+            title: 'Khóa học',
+            dataIndex: 'totalCourses',
+            key: 'totalCourses',
+            width: 100,
+        },
+        {
+            title: 'Đánh giá',
+            dataIndex: 'averageRating',
+            key: 'averageRating',
+            render: (rating) => (
+                <Space>
+                    <StarOutlined style={{ color: '#fadb14' }} />
+                    <span>{rating?.toFixed(1) || 0}</span>
+                </Space>
+            ),
+            width: 100,
+        },
+    ];
+
     const fetchPopularCourses = async () => {
         setLoadingPopular(true);
         try {
@@ -197,6 +260,23 @@ const Statistics = () => {
             message.error('Lỗi khi tải khóa học phổ biến.');
         } finally {
             setLoadingPopular(false);
+        }
+    };
+
+    const fetchTopInstructorsData = async () => {
+        setLoadingInstructors(true);
+        try {
+            const response = await fetchTopInstructorsApi({ limit: 5 });
+            if (response && response.code === 1000) {
+                setTopInstructors(response.result.map(i => ({ ...i, key: i.id })));
+            } else {
+                message.error(response?.message || 'Không thể tải giảng viên hàng đầu.');
+            }
+        } catch (error) {
+            console.error('Error fetching top instructors:', error);
+            message.error('Lỗi khi tải giảng viên hàng đầu.');
+        } finally {
+            setLoadingInstructors(false);
         }
     };
 
@@ -329,6 +409,7 @@ const Statistics = () => {
     useEffect(() => {
         fetchStatistics();
         fetchQuizStatistics();
+        fetchTopInstructorsData();
     }, []);
 
     useEffect(() => {
@@ -342,172 +423,127 @@ const Statistics = () => {
         }
     };
 
+    const tableCards = [
+        {
+            key: 'topInstructors',
+            title: <><TrophyOutlined style={{ color: '#faad14' }} /> Top Giảng viên</>,
+            content: <Table columns={topInstructorsColumns} dataSource={topInstructors} rowKey="key" loading={loadingInstructors} pagination={false} size="small" />
+        },
+        {
+            key: 'popularCourses',
+            title: <><TrophyOutlined /> Khóa học phổ biến nhất</>,
+            extra: (
+                <Radio.Group value={popularCoursesLimit} onChange={(e) => setPopularCoursesLimit(e.target.value)} size="small">
+                    <Radio.Button value={5}>Top 5</Radio.Button>
+                    <Radio.Button value={10}>Top 10</Radio.Button>
+                </Radio.Group>
+            ),
+            content: <Table columns={popularCoursesColumns} dataSource={popularCourses} rowKey="key" loading={loadingPopular} pagination={false} size="small" />
+        },
+        {
+            key: 'topQuizzes',
+            title: <><QuestionCircleOutlined /> Top Quiz được làm nhiều nhất</>,
+            content: <Table columns={topQuizzesColumns} dataSource={topQuizzes} rowKey="key" loading={loadingQuizStats} pagination={false} size="small" />
+        },
+        {
+            key: 'recentEnrollments',
+            title: 'Đăng ký gần đây',
+            content: <Table columns={columns} dataSource={recentEnrollments} rowKey="key" loading={loading} pagination={false} size="small" />
+        },
+        {
+            key: 'recentReviews',
+            title: 'Đánh giá gần đây',
+            content: <Table columns={reviewColumns} dataSource={recentReviews} rowKey="key" loading={loading} pagination={false} size="small" />
+        }
+    ].filter(card => visibleSections[card.key]);
+
+
     return (
-        <div>
-            <div style={{ marginBottom: 16 }}>
-                <RangePicker onChange={handleDateRangeChange} />
-            </div>
+        <div style={{ padding: '24px' }}>
+            <Title level={2} style={{ marginBottom: '16px' }}>Dashboard Thống kê</Title>
+            <Typography.Text type="secondary">Tổng quan về hoạt động của hệ thống.</Typography.Text>
 
-            <Row gutter={16}>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số người dùng"
-                            value={statistics.totalUsers}
-                            prefix={<UserOutlined />}
-                            loading={loading}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số khóa học"
-                            value={statistics.totalCourses}
-                            prefix={<BookOutlined />}
-                            loading={loading}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số bài học"
-                            value={statistics.totalLessons}
-                            prefix={<FileTextOutlined />}
-                            loading={loading}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số review"
-                            value={statistics.totalReviews}
-                            prefix={<StarOutlined />}
-                            loading={loading}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+            <Divider />
 
-            {/* Quiz Statistics Cards */}
-            <Row gutter={16} style={{ marginTop: 16 }}>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số Quiz"
-                            value={quizStatistics.totalQuizzes}
-                            prefix={<QuestionCircleOutlined />}
-                            loading={loadingQuizStats}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tổng lượt làm bài"
-                            value={quizStatistics.totalQuizAttempts}
-                            prefix={<BarChartOutlined />}
-                            loading={loadingQuizStats}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Tỷ lệ đạt Quiz"
-                            value={quizStatistics.quizSuccessRate}
-                            prefix={<CheckCircleOutlined />}
-                            suffix="%"
-                            precision={1}
-                            loading={loadingQuizStats}
-                        />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card>
-                        <Statistic
-                            title="Điểm trung bình"
-                            value={quizStatistics.averageQuizScore}
-                            prefix={<StarOutlined />}
-                            suffix="/10"
-                            precision={1}
-                            loading={loadingQuizStats}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+            <Card style={{ marginBottom: 24, background: '#fafafa' }}>
+                <Title level={4} style={{ marginTop: 0 }}><SettingOutlined /> Tùy chọn hiển thị</Title>
+                 <Row gutter={[16, 8]}>
+                    {Object.keys(visibleSections).map(key => (
+                        <Col key={key}>
+                            <Switch
+                                checked={visibleSections[key]}
+                                onChange={(c) => handleVisibilityChange(c, key)}
+                                checkedChildren={<EyeOutlined />}
+                                unCheckedChildren={<EyeInvisibleOutlined />}
+                            />
+                            <span style={{ marginLeft: 8, textTransform: 'capitalize' }}>
+                                {key.replace(/([A-Z])/g, ' $1').replace(/Stats|Summary/gi, '').trim()}
+                            </span>
+                        </Col>
+                    ))}
+                </Row>
+            </Card>
 
-            <Row gutter={16} style={{ marginTop: 16 }}>
-                <Col span={12}>
-                    <Card
-                        title="Đăng ký gần đây"
-                    >
-                        <Table
-                            columns={columns}
-                            dataSource={recentEnrollments}
-                            rowKey="key"
-                            loading={loading}
-                        />
-                    </Card>
-                </Col>
-                <Col span={12}>
-                    <Card
-                        title={
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span><TrophyOutlined /> Khóa học phổ biến nhất</span>
-                                <Radio.Group
-                                    value={popularCoursesLimit}
-                                    onChange={(e) => setPopularCoursesLimit(e.target.value)}
-                                >
-                                    <Radio.Button value={5}>Top 5</Radio.Button>
-                                    <Radio.Button value={10}>Top 10</Radio.Button>
-                                </Radio.Group>
-                            </div>
-                        }
-                    >
-                        <Table
-                            columns={popularCoursesColumns}
-                            dataSource={popularCourses}
-                            rowKey="key"
-                            loading={loadingPopular}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+            {visibleSections.summaryStats && (
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng số người dùng" value={statistics.totalUsers} prefix={<UserOutlined />} loading={loading} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng số khóa học" value={statistics.totalCourses} prefix={<BookOutlined />} loading={loading} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng số bài học" value={statistics.totalLessons} prefix={<FileTextOutlined />} loading={loading} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng số review" value={statistics.totalReviews} prefix={<StarOutlined />} loading={loading} />
+                        </Card>
+                    </Col>
+                </Row>
+            )}
 
-            <Row gutter={16} style={{ marginTop: 16 }}>
-                <Col span={12}>
-                    <Card title="Đánh giá gần đây">
-                        <Table
-                            columns={reviewColumns}
-                            dataSource={recentReviews}
-                            rowKey="key"
-                            loading={loading}
-                            pagination={false}
-                        />
-                    </Card>
-                </Col>
-                <Col span={12}>
-                    <Card
-                        title={
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <QuestionCircleOutlined style={{ marginRight: 8 }} />
-                                <span>Top Quiz được làm nhiều nhất</span>
-                            </div>
-                        }
-                    >
-                        <Table
-                            columns={topQuizzesColumns}
-                            dataSource={topQuizzes}
-                            rowKey="key"
-                            loading={loadingQuizStats}
-                            pagination={false}
-                            size="small"
-                        />
-                    </Card>
-                </Col>
+            {visibleSections.quizSummaryStats && (
+                <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng số Quiz" value={quizStatistics.totalQuizzes} prefix={<QuestionCircleOutlined />} loading={loadingQuizStats} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tổng lượt làm bài" value={quizStatistics.totalQuizAttempts} prefix={<BarChartOutlined />} loading={loadingQuizStats} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Tỷ lệ đạt Quiz" value={quizStatistics.quizSuccessRate} prefix={<CheckCircleOutlined />} suffix="%" precision={1} loading={loadingQuizStats} />
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Card>
+                            <Statistic title="Điểm trung bình" value={quizStatistics.averageQuizScore} prefix={<StarOutlined />} suffix="/10" precision={1} loading={loadingQuizStats} />
+                        </Card>
+                    </Col>
+                </Row>
+            )}
+
+            <Divider style={{ marginTop: 24 }} />
+            
+            <Row gutter={[24, 24]}>
+                {tableCards.map(card => (
+                    <Col xs={24} lg={12} key={card.key}>
+                        <Card title={card.title} extra={card.extra || null}>
+                            {card.content}
+                        </Card>
+                    </Col>
+                ))}
             </Row>
         </div>
     );
