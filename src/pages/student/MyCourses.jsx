@@ -18,10 +18,11 @@ import {
     Rate
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircleOutlined, SearchOutlined, ClearOutlined, BookOutlined, StarOutlined } from '@ant-design/icons';
-import { fetchMyCoursesApi, fetchCategoriesApi } from '../../util/api';
+import { PlayCircleOutlined, SearchOutlined, ClearOutlined, BookOutlined, StarOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { fetchMyCoursesApi, fetchCategoriesApi, fetchCourseByIdApi } from '../../util/api';
+import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
 const MyCourses = () => {
@@ -86,23 +87,40 @@ const MyCourses = () => {
             try {
                 const res = await fetchMyCoursesApi(params);
                 if (res && res.result) {
+                    const enrollments = res.result.content;
+
+                    // Fetch detailed course info for each enrollment to get ratings
+                    const detailedCoursePromises = enrollments.map(enrollment =>
+                        fetchCourseByIdApi(enrollment.course.id).catch(e => {
+                            console.error(`Failed to fetch details for course ${enrollment.course.id}`, e);
+                            return null; // Return null on error to not break Promise.all
+                        })
+                    );
+                    const detailedCourseResponses = await Promise.all(detailedCoursePromises);
+
                     // Map enrollment data to course data with enrollment info
-                    const enrollmentsData = res.result.content.map(enrollment => ({
-                        ...enrollment.course,
-                        // Add enrollment-specific data
-                        enrollmentId: enrollment.id,
-                        enrollmentDate: enrollment.enrollmentDate,
-                        isCompleted: enrollment.completed, // Fixed: use 'completed' instead of 'isCompleted'
-                        completionDate: enrollment.completionDate,
-                        progress: Math.round(enrollment.progress * 100), // Convert 0.0-1.0 to 0-100%
-                        approvalStatus: enrollment.approvalStatus,
-                        // Calculate completed lessons based on progress and total lessons
-                        completedLessons: Math.round((enrollment.progress * enrollment.course.totalLessons) || 0)
-                    }));
+                    const enrollmentsData = enrollments.map((enrollment, index) => {
+                        const detailedCourse = detailedCourseResponses[index]?.result || enrollment.course;
+
+                        return {
+                            ...detailedCourse, // Use detailed course info
+                            // Add enrollment-specific data
+                            enrollmentId: enrollment.id,
+                            enrollmentDate: enrollment.enrollmentDate,
+                            isCompleted: enrollment.completed,
+                            completionDate: enrollment.completionDate,
+                            progress: Math.round((enrollment.progress || 0) * 100), // Ensure progress is a number
+                            approvalStatus: enrollment.approvalStatus,
+                            // Calculate completed lessons based on progress and total lessons
+                            completedLessons: Math.round(((enrollment.progress || 0) * detailedCourse.totalLessons) || 0)
+                        };
+                    });
 
                     setAllEnrollments(enrollmentsData); // Store all data
+                    // The pagination total is set in the next useEffect
                 } else {
                     setCourses([]);
+                    setAllEnrollments([]);
                     setPagination(prev => ({...prev, total: 0}));
                 }
             } catch (error) {
@@ -272,6 +290,12 @@ const MyCourses = () => {
                                     actions={[
                                         <Button
                                             type="primary"
+                                            style={
+                                                course.approvalStatus !== 'APPROVED' ? {} :
+                                                course.progress === 100 ? { backgroundColor: '#faad14', borderColor: '#faad14' } :
+                                                course.progress > 0 ? {} :
+                                                { backgroundColor: '#52c41a', borderColor: '#52c41a' }
+                                            }
                                             icon={course.progress === 100 ? <StarOutlined /> : <PlayCircleOutlined />}
                                             onClick={() => course.progress === 100 ? handleRateCourse(course.id) : handleContinueLearning(course.id)}
                                             disabled={course.approvalStatus !== 'APPROVED'}
@@ -309,7 +333,7 @@ const MyCourses = () => {
                                                     </div>
                                                     
                                                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                        <Rate disabled allowHalf defaultValue={course.averageRating || 0} style={{ fontSize: '14px' }} />
+                                                        <Rate disabled allowHalf value={course.averageRating || 0} style={{ fontSize: '14px' }} />
                                                         <Text type="secondary" style={{ marginLeft: 8 }}>
                                                             ({course.averageRating ? course.averageRating.toFixed(1) : 'Chưa có đánh giá'})
                                                         </Text>
