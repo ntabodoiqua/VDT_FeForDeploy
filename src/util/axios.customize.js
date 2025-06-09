@@ -32,8 +32,13 @@ instance.interceptors.request.use(function (config) {
         'lms/users',
         'lms/auth/refresh'
     ];
-    // Nếu url không nằm trong danh sách noAuthPaths thì thêm token
-    if (!noAuthPaths.some(path => config.url.startsWith(path))) {
+
+    // Check if the URL is for a public resource or in the noAuthPaths list
+    const isPublicPath = config.url.includes('/public/');
+    const isNoAuthPath = noAuthPaths.some(path => config.url.startsWith(path));
+
+    // Nếu url không phải public và không nằm trong danh sách noAuthPaths thì thêm token
+    if (!isPublicPath && !isNoAuthPath) {
         const token = localStorage.getItem("access_token");
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;

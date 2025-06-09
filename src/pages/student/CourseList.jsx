@@ -552,18 +552,18 @@ const CourseList = () => {
                                                             <strong>Bài học:</strong> {course.totalLessons || 0}
                                                         </p>
                                                     </div>
-                                                    {course.averageRating && (
+                                                    {courseData.averageRating != null && (
                                                         <div>
-                                                            <Rate disabled defaultValue={course.averageRating} style={{ fontSize: '12px' }} />
+                                                            <Rate disabled defaultValue={courseData.averageRating} style={{ fontSize: '12px' }} />
                                                             <span style={{ fontSize: '12px', marginLeft: 4 }}>
-                                                                ({course.averageRating.toFixed(1)}/5)
+                                                                ({courseData.averageRating.toFixed(1)}/5)
                                                             </span>
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div style={{ marginBottom: 8 }}>
                                                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                        ⭐ {course.totalReviews && course.totalReviews > 0 ? `${course.totalReviews} đánh giá` : 'Chưa có đánh giá'}
+                                                        ⭐ {courseData.totalReviews != null && courseData.totalReviews > 0 ? `${courseData.totalReviews} đánh giá` : 'Chưa có đánh giá'}
                                                     </Text>
                                                 </div>
                                                 <div style={{ marginBottom: 8 }}>
