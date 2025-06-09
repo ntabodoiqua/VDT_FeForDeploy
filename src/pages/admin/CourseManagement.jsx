@@ -115,6 +115,11 @@ const CourseManagement = () => {
   const [selectedStudentHistory, setSelectedStudentHistory] = useState([]);
   const [selectedStudentInfo, setSelectedStudentInfo] = useState(null);
   const [loadingStudentHistory, setLoadingStudentHistory] = useState(false);
+  const [studentQuizResultsPagination, setStudentQuizResultsPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const getDisplayImageUrl = (urlPath) => {
     if (!urlPath) return null;
@@ -721,31 +726,45 @@ const CourseManagement = () => {
     await fetchCourseQuizStatistics(course.id);
   };
 
-  const fetchCourseQuizStatistics = async (courseId) => {
+  const fetchCourseQuizStatistics = async (courseId, page = 1, pageSize = 10) => {
     setLoadingQuizStats(true);
     try {
       const [statisticsResponse, studentResultsResponse] = await Promise.all([
         getCourseQuizStatisticsApi(courseId),
-        getCourseStudentQuizResultsApi(courseId, { page: 0, size: 100 }),
+        getCourseStudentQuizResultsApi(courseId, { page: page - 1, size: pageSize }),
       ]);
 
       if (statisticsResponse && statisticsResponse.code === 1000) {
         setQuizStatistics(statisticsResponse.result);
       } else {
         message.error("Không thể tải thống kê quiz của khóa học.");
+        setQuizStatistics(null); // Clear old data on error
       }
 
       if (studentResultsResponse && studentResultsResponse.code === 1000) {
-        setStudentQuizResults(studentResultsResponse.result || []);
+        const { content, totalElements, pageable } = studentResultsResponse.result;
+        setStudentQuizResults(content || []);
+        setStudentQuizResultsPagination({
+          current: pageable.pageNumber + 1,
+          pageSize: pageable.pageSize,
+          total: totalElements,
+        });
       } else {
         message.error("Không thể tải kết quả quiz của học viên.");
+        setStudentQuizResults([]); // Clear old data on error
       }
     } catch (error) {
       console.error("Error fetching course quiz statistics:", error);
       message.error("Lỗi khi tải thống kê quiz.");
+      setQuizStatistics(null);
+      setStudentQuizResults([]);
     } finally {
       setLoadingQuizStats(false);
     }
+  };
+
+  const handleStudentResultsTableChange = (pagination) => {
+    fetchCourseQuizStatistics(selectedCourseForQuiz.id, pagination.current, pagination.pageSize);
   };
 
   const handleViewStudentHistory = async (student) => {
@@ -1244,16 +1263,15 @@ const CourseManagement = () => {
               )}
 
             {/* Student Results Table */}
-            <Card title="Kết quả học viên">
+            <Card title="Kết quả học viên (Điểm cao nhất ở mỗi Quiz)">
               <Table
                 dataSource={studentQuizResults}
-                rowKey="studentId"
+                rowKey="attemptId"
                 loading={loadingQuizStats}
                 columns={[
                   {
                     title: "Học viên",
-                    dataIndex: "studentName",
-                    key: "studentName",
+                    key: "student",
                     render: (text, record) => (
                       <div>
                         <div style={{ fontWeight: "bold" }}>
@@ -1264,20 +1282,22 @@ const CourseManagement = () => {
                         </div>
                       </div>
                     ),
+                    filters: studentQuizResults ? [...new Set(studentQuizResults.map(item => item.studentUsername))].map(username => ({ text: username, value: username })) : [],
+                    onFilter: (value, record) => record.studentUsername.includes(value),
                   },
                   {
-                    title: "Số lượt làm",
-                    dataIndex: "totalAttempts",
-                    key: "totalAttempts",
-                    align: "center",
-                    sorter: (a, b) => a.totalAttempts - b.totalAttempts,
+                    title: "Quiz",
+                    dataIndex: "quizTitle",
+                    key: "quizTitle",
+                    filters: studentQuizResults ? [...new Set(studentQuizResults.map(item => item.quizTitle))].map(title => ({ text: title, value: title })) : [],
+                    onFilter: (value, record) => record.quizTitle.includes(value),
                   },
                   {
-                    title: "Điểm cao nhất",
-                    dataIndex: "bestScore",
-                    key: "bestScore",
+                    title: "Điểm",
+                    dataIndex: "score",
+                    key: "score",
                     align: "center",
-                    sorter: (a, b) => a.bestScore - b.bestScore,
+                    sorter: (a, b) => a.score - b.score,
                     render: (score) => (
                       <span
                         style={{
@@ -1295,66 +1315,73 @@ const CourseManagement = () => {
                     ),
                   },
                   {
-                    title: "Điểm trung bình",
-                    dataIndex: "averageScore",
-                    key: "averageScore",
-                    align: "center",
-                    sorter: (a, b) => a.averageScore - b.averageScore,
-                    render: (score) => score?.toFixed(1) || "N/A",
+                      title: "Phần trăm",
+                      dataIndex: "percentage",
+                      key: "percentage",
+                      align: "center",
+                      sorter: (a, b) => a.percentage - b.percentage,
+                      render: (percentage) => (
+                        <Progress
+                          percent={Math.round(percentage)}
+                          size="small"
+                          status={percentage >= 50 ? "success" : "exception"}
+                        />
+                      ),
                   },
                   {
-                    title: "Lần cuối làm",
-                    dataIndex: "lastAttemptDate",
-                    key: "lastAttemptDate",
+                    title: "Ngày hoàn thành",
+                    dataIndex: "completedAt",
+                    key: "completedAt",
                     align: "center",
+                    sorter: (a, b) => new Date(a.completedAt) - new Date(b.completedAt),
                     render: (date) =>
-                      date ? new Date(date).toLocaleDateString("vi-VN") : "N/A",
+                      date ? new Date(date).toLocaleString("vi-VN") : "N/A",
                   },
                   {
                     title: "Trạng thái",
-                    dataIndex: "status",
-                    key: "status",
+                    dataIndex: "isPassed",
+                    key: "isPassed",
                     align: "center",
-                    render: (status, record) => {
-                      if (record.bestScore >= 5) {
-                        return (
-                          <Tag color="success" icon={<CheckCircleOutlined />}>
-                            Đạt
-                          </Tag>
-                        );
-                      } else if (record.totalAttempts > 0) {
-                        return (
-                          <Tag color="error" icon={<CloseCircleOutlined />}>
-                            Chưa đạt
-                          </Tag>
-                        );
-                      } else {
-                        return <Tag color="default">Chưa làm</Tag>;
-                      }
-                    },
+                    render: (isPassed) =>
+                      isPassed ? (
+                        <Tag color="success" icon={<CheckCircleOutlined />}>
+                          Đạt
+                        </Tag>
+                      ) : (
+                        <Tag color="error" icon={<CloseCircleOutlined />}>
+                          Chưa đạt
+                        </Tag>
+                      ),
+                    filters: [
+                        { text: 'Đạt', value: true },
+                        { text: 'Chưa đạt', value: false },
+                    ],
+                    onFilter: (value, record) => record.isPassed === value,
                   },
                   {
-                    title: "Thao tác",
+                    title: "Lịch sử SV",
                     key: "action",
                     align: "center",
                     render: (_, record) => (
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewStudentHistory(record)}
-                        disabled={record.totalAttempts === 0}
-                      >
-                        Xem lịch sử
-                      </Button>
+                      <Tooltip title="Xem toàn bộ lịch sử làm quiz của học viên này trong khóa học">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<EyeOutlined />}
+                          onClick={() => handleViewStudentHistory(record)}
+                        >
+                          Xem
+                        </Button>
+                      </Tooltip>
                     ),
                   },
                 ]}
                 pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
-                  showTotal: (total) => `Tổng ${total} học viên`,
+                    ...studentQuizResultsPagination,
+                    showSizeChanger: true,
+                    showTotal: (total) => `Tổng ${total} kết quả`,
                 }}
+                onChange={handleStudentResultsTableChange}
               />
             </Card>
           </div>
