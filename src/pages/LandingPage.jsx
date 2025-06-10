@@ -23,34 +23,6 @@ const getDisplayImageUrl = (urlPath) => {
     return urlPath; 
 };
 
-
-const reviews = [
-    {
-        id: 1,
-        courseName: 'ReactJS cho người mới bắt đầu',
-        reviewerName: 'Minh Anh',
-        reviewerAvatar: 'https://i.pravatar.cc/150?img=1',
-        rating: 5,
-        comment: 'Khóa học tuyệt vời! Giảng viên giải thích rất dễ hiểu và các ví dụ rất thực tế. Tôi đã tự tin hơn rất nhiều sau khi hoàn thành khóa học.',
-    },
-    {
-        id: 2,
-        courseName: 'Thiết kế UI/UX với Figma',
-        reviewerName: 'Thanh Hằng',
-        reviewerAvatar: 'https://i.pravatar.cc/150?img=5',
-        rating: 5,
-        comment: 'Nội dung khóa học rất chi tiết và cập nhật. Mình đã học được rất nhiều kỹ năng thiết kế hữu ích và áp dụng được ngay vào công việc.',
-    },
-    {
-        id: 3,
-        courseName: 'Machine Learning cơ bản',
-        reviewerName: 'Quốc Bảo',
-        reviewerAvatar: 'https://i.pravatar.cc/150?img=8',
-        rating: 4,
-        comment: 'Một khóa học nền tảng tốt cho những ai muốn bắt đầu với AI. Kiến thức được trình bày một cách có hệ thống. Mong có thêm các khóa học nâng cao.',
-    },
-];
-
 const heroTitles = [
     'Mở Khóa Tri Thức, Dẫn Lối Tương Lai',
     'Học Tập Mọi Lúc, Mọi Nơi',
@@ -82,6 +54,8 @@ const LandingPage = () => {
     const [loadingPopular, setLoadingPopular] = useState(true);
     const [topInstructors, setTopInstructors] = useState([]);
     const [loadingTopInstructors, setLoadingTopInstructors] = useState(true);
+    const [reviews, setReviews] = useState([]);
+    const [loadingReviews, setLoadingReviews] = useState(true);
 
     // New states for course preview modal
     const [previewModalVisible, setPreviewModalVisible] = useState(false);
@@ -237,9 +211,28 @@ const LandingPage = () => {
             }
         };
 
+        const fetchReviews = async () => {
+            setLoadingReviews(true);
+            try {
+                // Fetch latest 5 approved reviews, sorted by date
+                const response = await axios.get('lms/course-reviews/public/handled?page=0&size=5&sort=reviewDate,desc');
+                if (response && response.result) {
+                    setReviews(response.result.content);
+                } else {
+                    setReviews([]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch reviews:", error);
+                setReviews([]);
+            } finally {
+                setLoadingReviews(false);
+            }
+        };
+
         fetchPopularCourses();
         fetchAllCourses();
         fetchTopInstructors();
+        fetchReviews();
         fetchAllInstructors(1, 8, { name: undefined, experience: undefined, rating: undefined });
 
         return () => {
@@ -746,28 +739,97 @@ const LandingPage = () => {
                             <Title level={2}><StarOutlined style={{ color: '#faad14', marginRight: 12 }} />Học viên nói gì về Innolearn</Title>
                             <Paragraph type="secondary">Những chia sẻ và cảm nhận thực tế từ các học viên của chúng tôi.</Paragraph>
                         </div>
-                        <Carousel autoplay dots={{ className: 'custom-dots' }} style={{ paddingBottom: '40px' }}>
-                            {reviews.map((review) => (
-                                <div key={review.id} style={{ padding: '0 20px' }}>
-                                    <Card style={{
-                                        border: '1px solid #e8e8e8',
-                                        borderRadius: '8px',
-                                        padding: '24px',
-                                        backgroundColor: '#fafafa'
-                                    }}>
-                                        <Card.Meta
-                                            avatar={<Avatar size={64} src={review.reviewerAvatar} />}
-                                            title={<Title level={5} style={{ marginBottom: 0 }}>{review.reviewerName}</Title>}
-                                            description={<Text type="secondary">Học viên khóa "{review.courseName}"</Text>}
-                                        />
-                                        <Rate disabled defaultValue={review.rating} style={{ margin: '16px 0' }} />
-                                        <Paragraph style={{ fontStyle: 'italic', color: '#555', minHeight: 80 }}>
-                                            "{review.comment}"
-                                        </Paragraph>
-                                    </Card>
+                        {loadingReviews ? (
+                             <Row gutter={[24, 24]}>
+                                {Array.from({ length: 2 }).map((_, index) => (
+                                    <Col xs={24} md={12} key={index}>
+                                        <Card>
+                                            <Skeleton avatar active />
+                                        </Card>
+                                    </Col>
+                                ))}
+                            </Row>
+                        ) : reviews.length > 0 ? (
+                           <>
+                                <style>
+                                    {`
+                                        @keyframes marquee-scroll {
+                                            from { transform: translateX(0); }
+                                            to { transform: translateX(-50%); }
+                                        }
+
+                                        .marquee-container {
+                                            overflow: hidden;
+                                            position: relative;
+                                            width: 100%;
+                                            -webkit-mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent);
+                                            mask-image: linear-gradient(to right, transparent, white 10%, white 90%, transparent);
+                                        }
+
+                                        .marquee-content {
+                                            display: flex;
+                                            width: ${reviews.length * 100}%;
+                                            animation: marquee-scroll ${reviews.length * 8}s linear infinite;
+                                        }
+                                        
+                                        .marquee-container:hover .marquee-content {
+                                            animation-play-state: paused;
+                                        }
+
+                                        .review-card-wrapper {
+                                            flex-shrink: 0;
+                                            width: ${100 / (reviews.length * 2)}%;
+                                            box-sizing: border-box;
+                                            padding: 0 12px;
+                                        }
+                                        
+                                        @media (max-width: 992px) {
+                                            .marquee-content {
+                                                width: ${reviews.length * 200}%;
+                                                animation-duration: ${reviews.length * 10}s;
+                                            }
+                                            .review-card-wrapper {
+                                                width: ${100 / reviews.length}%;
+                                            }
+                                        }
+                                    `}
+                                </style>
+                                <div className="marquee-container">
+                                    <div className="marquee-content">
+                                        {[...reviews, ...reviews].map((review, index) => (
+                                            <div className="review-card-wrapper" key={`${review.id}-${index}`}>
+                                                <Card style={{
+                                                    border: '1px solid #e8e8e8',
+                                                    borderRadius: '8px',
+                                                    padding: '24px',
+                                                    backgroundColor: '#fafafa',
+                                                    height: '100%',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    justifyContent: 'space-between'
+                                                }}>
+                                                    <div>
+                                                        <Card.Meta
+                                                            avatar={<Avatar size={64} src={getDisplayImageUrl(review.student?.avatarUrl)} icon={<UserOutlined />} />}
+                                                            title={<Title level={5} style={{ marginBottom: 0 }}>{`${review.student?.firstName || ''} ${review.student?.lastName || ''}`}</Title>}
+                                                            description={<Text type="secondary">Học viên khóa "{review.course?.title}"</Text>}
+                                                        />
+                                                        <Rate disabled value={review.rating} style={{ margin: '16px 0' }} />
+                                                    </div>
+                                                    <Paragraph style={{ fontStyle: 'italic', color: '#555' }} ellipsis={{ rows: 3, expandable: false, tooltip: `"${review.comment}"` }}>
+                                                        "{review.comment}"
+                                                    </Paragraph>
+                                                </Card>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            ))}
-                        </Carousel>
+                           </>
+                        ) : (
+                             <div style={{ textAlign: 'center' }}>
+                                <Paragraph>Chưa có đánh giá nào để hiển thị.</Paragraph>
+                            </div>
+                        )}
                     </AnimatedSection>
                 </div>
             </Content>
