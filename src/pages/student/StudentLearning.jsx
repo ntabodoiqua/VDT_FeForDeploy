@@ -615,6 +615,24 @@ const StudentLearning = () => {
 
     setQuizLoading(true);
     try {
+      // Fetch quiz details đầy đủ trước khi start (theo documentation)
+      let quizDetails = currentLesson.quiz;
+      try {
+        const quizResponse = await fetchQuizByIdApi(currentLesson.quiz.id);
+        if (quizResponse.code === 1000 && quizResponse.result) {
+          quizDetails = quizResponse.result;
+          console.log(
+            "Fetched full quiz details with questions:",
+            quizDetails.questions?.length || 0
+          );
+        } else {
+          console.log("Using lesson quiz data as fallback");
+        }
+      } catch (error) {
+        console.error("Error fetching quiz details:", error);
+        message.warning("Không thể tải chi tiết quiz, sử dụng dữ liệu cơ bản");
+      }
+
       // Kiểm tra xem có attempt in-progress không
       try {
         const currentAttemptResponse = await getCurrentQuizAttemptApi(
@@ -630,21 +648,12 @@ const StudentLearning = () => {
           setQuizAttempt(attemptData);
 
           // Ensure quiz has full question data
-          let quizWithQuestions = attemptData.quiz;
-          if (
-            !quizWithQuestions.questions ||
-            quizWithQuestions.questions.length === 0
-          ) {
-            // Use the quiz details we already fetched earlier
-            quizWithQuestions = quizDetails;
-          }
-
-          setCurrentQuiz(quizWithQuestions);
+          setCurrentQuiz(quizDetails);
           setQuizVisible(true);
           setCurrentQuestionIndex(0);
 
           // Initialize timer for existing attempt
-          initializeTimer(quizWithQuestions, attemptData.startedAt);
+          initializeTimer(quizDetails, attemptData.startedAt);
 
           // Load existing answers từ attemptAnswers
           const existingAnswers = {};
@@ -676,24 +685,6 @@ const StudentLearning = () => {
         }
       }
 
-      // Fetch quiz details đầy đủ trước khi start (theo documentation)
-      let quizDetails = currentLesson.quiz;
-      try {
-        const quizResponse = await fetchQuizByIdApi(currentLesson.quiz.id);
-        if (quizResponse.code === 1000 && quizResponse.result) {
-          quizDetails = quizResponse.result;
-          console.log(
-            "Fetched full quiz details with questions:",
-            quizDetails.questions?.length || 0
-          );
-        } else {
-          console.log("Using lesson quiz data as fallback");
-        }
-      } catch (error) {
-        console.error("Error fetching quiz details:", error);
-        message.warning("Không thể tải chi tiết quiz, sử dụng dữ liệu cơ bản");
-      }
-
       // Kiểm tra điều kiện quiz theo documentation
       if (!quizDetails.isActive) {
         message.error("Quiz này hiện không khả dụng");
@@ -723,23 +714,14 @@ const StudentLearning = () => {
         setQuizAttempt(attemptData);
 
         // Ensure quiz has full question data
-        let quizWithQuestions = attemptData.quiz;
-        if (
-          !quizWithQuestions.questions ||
-          quizWithQuestions.questions.length === 0
-        ) {
-          // Use the quiz details we already fetched earlier
-          quizWithQuestions = quizDetails;
-        }
-
-        setCurrentQuiz(quizWithQuestions);
+        setCurrentQuiz(quizDetails);
         setQuizVisible(true);
         setCurrentQuestionIndex(0);
         setQuizAnswers({});
         setQuizResult(null);
 
         // Initialize timer for new attempt
-        initializeTimer(quizWithQuestions, new Date());
+        initializeTimer(quizDetails, new Date());
 
         message.success("Đã bắt đầu quiz mới!", 2);
       } else {
@@ -847,16 +829,6 @@ const StudentLearning = () => {
           attemptNumber: result.attemptNumber,
           startedAt: result.startedAt,
           completedAt: result.completedAt,
-          durationMinutes: (() => {
-            // Tính thời gian làm bài từ startedAt và completedAt
-            if (result.startedAt && result.completedAt) {
-              const startTime = new Date(result.startedAt);
-              const endTime = new Date(result.completedAt);
-              const durationMs = endTime - startTime;
-              return Math.ceil(durationMs / (1000 * 60));
-            }
-            return result.durationMinutes;
-          })(),
           score: result.score,
           totalPossibleScore:
             result.totalQuestions > 0
@@ -1132,7 +1104,7 @@ const StudentLearning = () => {
   };
 
   const getTotalQuestionsCount = () => {
-    return quizAttempt?.quiz?.questions?.length || 0;
+    return currentQuiz?.questions?.length || 0;
   };
 
   const renderLessonContent = () => {
@@ -2182,10 +2154,10 @@ const StudentLearning = () => {
               <Col span={6}>
                 <Card>
                   <Statistic
-                    title="Điểm đạt"
-                    value={quizResult.passingScore}
+                    title="Thời gian làm bài"
+                    value={dayjs(quizResult.completedAt).diff(dayjs(quizResult.startedAt), 'second')}
+                    formatter={formatTime}
                     valueStyle={{ color: "#fa8c16" }}
-                    suffix="%"
                   />
                 </Card>
               </Col>
@@ -2595,24 +2567,22 @@ const StudentLearning = () => {
                         <Col xs={24} sm={4}>
                           <div style={{ textAlign: "center" }}>
                             <div
-                              style={{ fontSize: "14px", fontWeight: "bold" }}
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "bold",
+                              }}
                             >
-                              {(() => {
-                                // Tính thời gian làm bài từ startedAt và completedAt
-                                if (attempt.startedAt && attempt.completedAt) {
-                                  const startTime = new Date(attempt.startedAt);
-                                  const endTime = new Date(attempt.completedAt);
-                                  const durationMs = endTime - startTime;
-                                  const durationMinutes = Math.ceil(
-                                    durationMs / (1000 * 60)
-                                  );
-                                  return durationMinutes;
-                                }
-                                return attempt.durationMinutes || 0;
-                              })()}
+                              {attempt.startedAt && attempt.completedAt
+                                ? formatTime(
+                                    dayjs(attempt.completedAt).diff(
+                                      dayjs(attempt.startedAt),
+                                      "second"
+                                    )
+                                  )
+                                : "N/A"}
                             </div>
                             <Text type="secondary" style={{ fontSize: "12px" }}>
-                              phút
+                              Thời gian
                             </Text>
                           </div>
                         </Col>
