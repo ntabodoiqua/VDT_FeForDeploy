@@ -46,6 +46,11 @@ import {
   TrophyOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import "katex/dist/katex.min.css";
 import {
   fetchCourseByIdApi,
   fetchPublicLessonsForCourseApi,
@@ -1098,71 +1103,59 @@ const StudentLearning = () => {
   };
 
   const getTotalQuestionsCount = () => {
-    // Try multiple sources for total questions count
-    if (currentQuiz?.totalQuestions > 0) {
-      return currentQuiz.totalQuestions;
-    }
-    if (currentQuiz?.questions && Array.isArray(currentQuiz.questions)) {
-      return currentQuiz.questions.length;
-    }
-    if (
-      quizAttempt?.attemptAnswers &&
-      Array.isArray(quizAttempt.attemptAnswers)
-    ) {
-      return quizAttempt.attemptAnswers.length;
-    }
-    if (quizAttempt?.totalQuestions > 0) {
-      return quizAttempt.totalQuestions;
-    }
-    return 0;
+    return quizAttempt?.quiz?.questions?.length || 0;
   };
 
   const renderLessonContent = () => {
-    if (!currentLesson?.content) {
+    if (lessonLoading) {
       return (
-        <Text style={{ color: "#666", fontStyle: "italic" }}>
-          Chưa có nội dung bài học
-        </Text>
+        <div style={{ textAlign: "center", padding: "100px 0" }}>
+          <Spin size="large" />
+          <p>Đang tải nội dung bài học...</p>
+        </div>
       );
     }
-
-    const isHtml = /<[a-z][\s\S]*>/i.test(currentLesson.content);
-
-    if (isHtml) {
+    if (!currentLesson) {
       return (
-        <div
-          dangerouslySetInnerHTML={{ __html: currentLesson.content }}
-          style={{
-            lineHeight: "1.8",
-            fontSize: "16px",
-            color: "#333",
-          }}
+        <Empty
+          description="Chưa có bài học nào được chọn. Vui lòng chọn một bài học từ danh sách."
+          style={{ marginTop: "100px" }}
         />
       );
-    } else {
-      return (
-        <Paragraph
-          style={{
-            fontSize: "16px",
-            lineHeight: "1.8",
-            color: "#333",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {currentLesson.content}
-        </Paragraph>
-      );
     }
+
+    return (
+      <Card
+        style={{
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          borderRadius: "12px",
+        }}
+      >
+        <Title level={3} style={{ marginBottom: "24px" }}>
+          {currentLesson.title}
+        </Title>
+        <div
+          className="lesson-content-wrapper"
+          style={{ fontSize: "16px", lineHeight: "1.8" }}
+        >
+          <ReactMarkdown
+            children={currentLesson.content || ""}
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex, rehypeRaw]}
+          />
+        </div>
+      </Card>
+    );
   };
 
   const calculateProgress = () => {
+    if (!lessons || lessons.length === 0 || !progressData) return 0;
     // Use real enrollment progress if available
     if (enrollment && enrollment.progress !== undefined) {
       return Math.round(enrollment.progress * 100);
     }
 
     // Fallback to lesson-based calculation
-    if (lessons.length === 0) return 0;
     return Math.round(((currentLessonIndex + 1) / lessons.length) * 100);
   };
 

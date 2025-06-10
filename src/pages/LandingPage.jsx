@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout, Row, Col, Input, Button, Typography, Space, Card, Avatar, Rate, Tag, Carousel, Skeleton, Modal, message, Spin, List, Descriptions, Image, Divider, Pagination, Form, Select } from 'antd';
-import { SearchOutlined, FacebookOutlined, GithubOutlined, InstagramOutlined, MailOutlined, PhoneOutlined, TrophyOutlined, CrownOutlined, StarOutlined, BookOutlined, TeamOutlined, UserOutlined, InfoCircleOutlined, ShoppingCartOutlined, PlayCircleOutlined, ClockCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { SearchOutlined, FacebookOutlined, GithubOutlined, InstagramOutlined, MailOutlined, PhoneOutlined, TrophyOutlined, CrownOutlined, StarOutlined, BookOutlined, TeamOutlined, UserOutlined, InfoCircleOutlined, ShoppingCartOutlined, PlayCircleOutlined, ClockCircleOutlined, AppstoreOutlined, ClearOutlined } from '@ant-design/icons';
 import logo from '../assets/images/logo.png';
 import useIntersectionObserver from '../hooks/useIntersectionObserver';
 import axios from '../util/axios.customize';
@@ -93,6 +93,15 @@ const LandingPage = () => {
     const [instructorCourses, setInstructorCourses] = useState([]);
     const [loadingInstructorCourses, setLoadingInstructorCourses] = useState(false);
 
+    // New states for course filtering
+    const [categories, setCategories] = useState([]);
+    const [allCoursesFilterForm] = Form.useForm();
+    const [allCoursesFilterValues, setAllCoursesFilterValues] = useState({
+        title: undefined,
+        instructorName: undefined,
+        category: undefined,
+    });
+
     const fetchAllInstructors = useCallback(async (page = 1, pageSize = 8, filters = {}) => {
         setLoadingAllInstructors(true);
         try {
@@ -134,6 +143,41 @@ const LandingPage = () => {
         }
     }, []);
 
+    const fetchAllCourses = useCallback(async (page = 1, pageSize = 8, filters = {}) => {
+        setLoadingAllCourses(true);
+        try {
+            const params = {
+                page: page - 1,
+                size: pageSize,
+                isActive: true,
+                title: filters.title || undefined,
+                instructorName: filters.instructorName || undefined,
+                categoryName: filters.category || undefined,
+            };
+
+            Object.keys(params).forEach(key => (params[key] === undefined) && delete params[key]);
+
+            const response = await axios.get(`lms/courses/public`, { params });
+            if (response && response.result) {
+                setAllCourses(response.result.content);
+                setPagination(prev => ({
+                    ...prev,
+                    current: page,
+                    pageSize: pageSize,
+                    total: response.result.totalElements
+                }));
+            } else {
+                setAllCourses([]);
+                message.error(response.message || 'Không thể tải danh sách khóa học');
+            }
+        } catch (error) {
+            console.error("Failed to fetch all courses:", error);
+            message.error("Không thể tải danh sách khóa học");
+        } finally {
+            setLoadingAllCourses(false);
+        }
+    }, []);
+
     useEffect(() => {
         // Initial fade-in
         const initialTimer = setTimeout(() => setHeroVisible(true), 100);
@@ -167,30 +211,6 @@ const LandingPage = () => {
                 setPopularCourses([]);
             } finally {
                 setLoadingPopular(false);
-            }
-        };
-
-        const fetchAllCourses = async (page = 1, pageSize = 8) => {
-            setLoadingAllCourses(true);
-            try {
-                const response = await axios.get(`lms/courses?page=${page - 1}&size=${pageSize}&isActive=true`);
-                if (response && response.result) {
-                    setAllCourses(response.result.content);
-                    setPagination(prev => ({
-                        ...prev,
-                        current: page,
-                        pageSize: pageSize,
-                        total: response.result.totalElements
-                    }));
-                } else {
-                    setAllCourses([]);
-                    message.error(response.message || 'Không thể tải danh sách khóa học');
-                }
-            } catch (error) {
-                console.error("Failed to fetch all courses:", error);
-                message.error("Không thể tải danh sách khóa học");
-            } finally {
-                setLoadingAllCourses(false);
             }
         };
 
@@ -229,20 +249,32 @@ const LandingPage = () => {
             }
         };
 
+        const fetchCategories = async () => {
+            try {
+                const response = await axios.get('lms/category/public?page=0&size=100');
+                if (response && response.result) {
+                    setCategories(response.result.content || response.result);
+                }
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+            }
+        };
+
         fetchPopularCourses();
         fetchAllCourses();
         fetchTopInstructors();
         fetchReviews();
         fetchAllInstructors(1, 8, { name: undefined, experience: undefined, rating: undefined });
+        fetchCategories();
 
         return () => {
             clearTimeout(initialTimer);
             clearInterval(intervalTimer);
         };
-    }, [fetchAllInstructors]);
+    }, [fetchAllInstructors, fetchAllCourses]);
 
     const handlePaginationChange = (page, pageSize) => {
-        fetchAllCourses(page, pageSize);
+        fetchAllCourses(page, pageSize, allCoursesFilterValues);
     };
 
     const handleInstructorPaginationChange = (page, pageSize) => {
@@ -295,7 +327,7 @@ const LandingPage = () => {
         try {
             // Fetch course details and lessons simultaneously
             const [courseResponse, lessonsResponse] = await Promise.all([
-                axios.get(`lms/courses/${courseId}`),
+                axios.get(`lms/courses/public/${courseId}`),
                 axios.get(`lms/courses/${courseId}/lessons/public?page=0&size=5`) // First 5 lessons for preview
             ]);
 
@@ -324,6 +356,18 @@ const LandingPage = () => {
     const getCategoryName = (course) => {
         return course?.category?.name || 'Chưa phân loại';
     }
+
+    const onApplyCourseFilters = (values) => {
+        setAllCoursesFilterValues(values);
+        fetchAllCourses(1, pagination.pageSize, values);
+    };
+
+    const onClearCourseFilters = () => {
+        allCoursesFilterForm.resetFields();
+        const clearedFilters = { title: undefined, instructorName: undefined, category: undefined };
+        setAllCoursesFilterValues(clearedFilters);
+        fetchAllCourses(1, pagination.pageSize, clearedFilters);
+    };
 
     return (
         <Layout style={{ backgroundColor: '#ffffff' }}>
@@ -498,6 +542,43 @@ const LandingPage = () => {
                             <Title level={2}><AppstoreOutlined style={{ color: '#1890ff', marginRight: 12 }} />Tất cả khóa học</Title>
                             <Paragraph type="secondary">Khám phá toàn bộ khoá học đa dạng và phong phú tại Innolearn.</Paragraph>
                         </div>
+                        <Card style={{ marginBottom: 32 }}>
+                            <Form form={allCoursesFilterForm} layout="vertical" onFinish={onApplyCourseFilters}>
+                                <Row gutter={16}>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="title" label="Tên khóa học">
+                                            <Input placeholder="Nhập tên khóa học" allowClear />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="instructorName" label="Tên giảng viên">
+                                            <Input placeholder="Nhập tên giảng viên" allowClear />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="category" label="Danh mục">
+                                            <Select placeholder="Chọn danh mục" allowClear>
+                                                {categories.map(cat => (
+                                                    <Option key={cat.id} value={cat.name}>{cat.name}</Option>
+                                                ))}
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col span={24} style={{ textAlign: 'right' }}>
+                                        <Space>
+                                            <Button onClick={onClearCourseFilters} icon={<ClearOutlined />}>
+                                                Xóa bộ lọc
+                                            </Button>
+                                            <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                                                Tìm kiếm
+                                            </Button>
+                                        </Space>
+                                    </Col>
+                                </Row>
+                            </Form>
+                        </Card>
                         <Row gutter={[24, 24]}>
                             {loadingAllCourses ? (
                                 Array.from({ length: 8 }).map((_, index) => (
@@ -798,10 +879,10 @@ const LandingPage = () => {
                                     <div className="marquee-content">
                                         {[...reviews, ...reviews].map((review, index) => (
                                             <div className="review-card-wrapper" key={`${review.id}-${index}`}>
-                                                <Card style={{
-                                                    border: '1px solid #e8e8e8',
-                                                    borderRadius: '8px',
-                                                    padding: '24px',
+                                    <Card style={{
+                                        border: '1px solid #e8e8e8',
+                                        borderRadius: '8px',
+                                        padding: '24px',
                                                     backgroundColor: '#fafafa',
                                                     height: '100%',
                                                     display: 'flex',
@@ -809,7 +890,7 @@ const LandingPage = () => {
                                                     justifyContent: 'space-between'
                                                 }}>
                                                     <div>
-                                                        <Card.Meta
+                                        <Card.Meta
                                                             avatar={<Avatar size={64} src={getDisplayImageUrl(review.student?.avatarUrl)} icon={<UserOutlined />} />}
                                                             title={<Title level={5} style={{ marginBottom: 0 }}>{`${review.student?.firstName || ''} ${review.student?.lastName || ''}`}</Title>}
                                                             description={<Text type="secondary">Học viên khóa "{review.course?.title}"</Text>}
@@ -817,11 +898,11 @@ const LandingPage = () => {
                                                         <Rate disabled value={review.rating} style={{ margin: '16px 0' }} />
                                                     </div>
                                                     <Paragraph style={{ fontStyle: 'italic', color: '#555' }} ellipsis={{ rows: 3, expandable: false, tooltip: `"${review.comment}"` }}>
-                                                        "{review.comment}"
-                                                    </Paragraph>
-                                                </Card>
-                                            </div>
-                                        ))}
+                                            "{review.comment}"
+                                        </Paragraph>
+                                    </Card>
+                                </div>
+                            ))}
                                     </div>
                                 </div>
                            </>

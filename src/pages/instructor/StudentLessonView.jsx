@@ -28,6 +28,11 @@ import {
     PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 import { fetchLessonByIdApi, fetchLessonDocumentsApi, downloadLessonDocumentApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
@@ -192,32 +197,13 @@ const StudentLessonView = () => {
             return <Text style={{ color: '#666', fontStyle: 'italic' }}>Chưa có nội dung bài học</Text>;
         }
 
-        // Check if content contains HTML tags
-        const isHtml = /<[a-z][\s\S]*>/i.test(lesson.content);
-        
-        if (isHtml) {
-            return (
-                <div 
-                    dangerouslySetInnerHTML={{ __html: lesson.content }}
-                    style={{ 
-                        lineHeight: '1.8',
-                        fontSize: '16px',
-                        color: '#333'
-                    }}
-                />
-            );
-        } else {
-            return (
-                <Paragraph style={{ 
-                    fontSize: '16px',
-                    lineHeight: '1.8',
-                    color: '#333',
-                    whiteSpace: 'pre-wrap'
-                }}>
-                    {lesson.content}
-                </Paragraph>
-            );
-        }
+        return (
+            <ReactMarkdown
+                children={lesson.content || ""}
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
+            />
+        );
     };
 
     if (loading) {
