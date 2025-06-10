@@ -43,6 +43,7 @@ import StudentInstructorList from './pages/student/InstructorList';
 import MyAccount from './pages/student/MyAccount';
 import CourseReview from './pages/student/CourseReview';
 import LandingPage from './pages/LandingPage';
+import QuizResults from './pages/student/QuizResults';
 
 function App() {
     const { auth } = useContext(AuthContext);
@@ -111,6 +112,7 @@ function App() {
                     <Route path="available-courses" element={<StudentCourseList />} />
                     <Route path="instructors" element={<StudentInstructorList />} />
                     <Route path="learning/:courseId" element={<StudentLearning />} />
+                    <Route path="course/:courseId/results" element={<QuizResults />} />
                     <Route path="course-review/:courseId" element={<CourseReview />} />
                     <Route path="my-account" element={<MyAccount />} />
                 </Route>

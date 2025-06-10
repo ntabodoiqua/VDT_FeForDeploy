@@ -18,7 +18,7 @@ import {
     Rate
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircleOutlined, SearchOutlined, ClearOutlined, BookOutlined, StarOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, SearchOutlined, ClearOutlined, BookOutlined, StarOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { fetchMyCoursesApi, fetchCategoriesApi, fetchCourseByIdApi } from '../../util/api';
 import dayjs from 'dayjs';
 
@@ -287,25 +287,48 @@ const MyCourses = () => {
                                             style={{ height: 180, objectFit: 'cover' }} 
                                         />
                                     }
-                                    actions={[
-                                        <Button
-                                            type="primary"
-                                            style={
-                                                course.approvalStatus !== 'APPROVED' ? {} :
-                                                course.progress === 100 ? { backgroundColor: '#faad14', borderColor: '#faad14' } :
-                                                course.progress > 0 ? {} :
-                                                { backgroundColor: '#52c41a', borderColor: '#52c41a' }
-                                            }
-                                            icon={course.progress === 100 ? <StarOutlined /> : <PlayCircleOutlined />}
-                                            onClick={() => course.progress === 100 ? handleRateCourse(course.id) : handleContinueLearning(course.id)}
-                                            disabled={course.approvalStatus !== 'APPROVED'}
-                                        >
-                                            {course.approvalStatus === 'PENDING' ? 'Chờ duyệt' :
-                                             course.approvalStatus === 'REJECTED' ? 'Bị từ chối' :
-                                             course.progress === 100 ? 'Đánh giá khóa học' :
-                                             course.progress > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}
-                                        </Button>
-                                    ]}
+                                    actions={(() => {
+                                        if (course.approvalStatus !== 'APPROVED') {
+                                            return [
+                                                <Button type="primary" disabled key="status" icon={<ClockCircleOutlined />}>
+                                                    {course.approvalStatus === 'PENDING' ? 'Chờ duyệt' : 'Bị từ chối'}
+                                                </Button>
+                                            ];
+                                        }
+
+                                        if (course.progress === 100 || course.isCompleted) {
+                                            return [
+                                                <Button
+                                                    key="review"
+                                                    type="primary"
+                                                    icon={<PlayCircleOutlined />}
+                                                    onClick={() => handleContinueLearning(course.id)}
+                                                >
+                                                    Xem lại
+                                                </Button>,
+                                                <Button
+                                                    key="rate"
+                                                    icon={<StarOutlined />}
+                                                    onClick={() => handleRateCourse(course.id)}
+                                                    style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
+                                                >
+                                                    Đánh giá
+                                                </Button>
+                                            ];
+                                        }
+
+                                        return [
+                                            <Button
+                                                key="learn"
+                                                type="primary"
+                                                icon={<PlayCircleOutlined />}
+                                                onClick={() => handleContinueLearning(course.id)}
+                                                style={course.progress > 0 ? {} : { backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                            >
+                                                {course.progress > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}
+                                            </Button>
+                                        ];
+                                    })()}
                                 >
                                     <Card.Meta
                                         title={<Title level={5} style={{ minHeight: 44, overflow: 'hidden' }}>{course.title}</Title>}

@@ -54,12 +54,6 @@ const StudentDashboard = () => {
             onClick: () => navigate('/student/instructors')
         },
         {
-            key: 'learning',
-            icon: <ReadOutlined />,
-            label: 'Học tập',
-            onClick: () => navigate('/student/learning')
-        },
-        {
             key: 'my-account',
             icon: <UserOutlined />,
             label: 'Tài khoản của tôi',
@@ -78,7 +72,6 @@ const StudentDashboard = () => {
         if (path === 'my-account') return 'my-account';
         if (path === 'available-courses') return 'available-courses';
         if (path === 'instructors') return 'instructors';
-        if (path === 'learning') return 'learning';
         return path || 'courses';
     };
 

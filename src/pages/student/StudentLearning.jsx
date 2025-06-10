@@ -1408,6 +1408,12 @@ const StudentLearning = () => {
                 >
                   Danh sách bài học
                 </Button>
+                <Button
+                  icon={<TrophyOutlined />}
+                  onClick={() => navigate(`/student/course/${courseId}/results`)}
+                >
+                  Kết quả học tập
+                </Button>
               </Space>
             </Col>
             <Col flex="auto" style={{ textAlign: "center" }}>
