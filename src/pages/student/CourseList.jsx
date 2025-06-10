@@ -356,16 +356,7 @@ const CourseList = () => {
 
     const handleGoToLearning = (courseData) => {
         const course = courseData.course || courseData;
-        const enrollment = enrollmentStatuses[course.id];
-        
-        if (enrollment && enrollment.approvalStatus === 'APPROVED') {
-            // Navigate to learning page
-            navigate(`/student/learning/${course.id}`);
-        } else if (enrollment && enrollment.approvalStatus === 'PENDING') {
-            message.info('Đăng ký của bạn đang chờ phê duyệt');
-        } else {
-            message.warning('Bạn chưa đăng ký khóa học này');
-        }
+        navigate(`/student/course/${course.id}`);
     };
 
     const renderEnrollmentButton = (courseData) => {

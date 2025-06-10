@@ -193,7 +193,7 @@ const MyCourses = () => {
     };
 
     const handleContinueLearning = (courseId) => {
-        navigate(`/student/learning/${courseId}`);
+        navigate(`/student/course/${courseId}`);
     };
 
     const handleRateCourse = (courseId) => {

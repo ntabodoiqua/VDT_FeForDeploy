@@ -37,7 +37,7 @@ import InstructorQuizManagement from './pages/instructor/QuizManagement';
 import InstructorQuizQuestionManagement from './pages/instructor/QuizQuestionManagement';
 import StudentCourses from './pages/student/Courses';
 import StudentCourseList from './pages/student/CourseList';
-import StudentCourseDetail from './pages/student/CourseDetail';
+import StudentCourseDetail from './pages/student/StudentCourseDetail';
 import StudentLearning from './pages/student/StudentLearning';
 import StudentInstructorList from './pages/student/InstructorList';
 import MyAccount from './pages/student/MyAccount';
@@ -111,6 +111,7 @@ function App() {
                     <Route path="my-courses" element={<StudentCourses />} />
                     <Route path="available-courses" element={<StudentCourseList />} />
                     <Route path="instructors" element={<StudentInstructorList />} />
+                    <Route path="course/:courseId" element={<StudentCourseDetail />} />
                     <Route path="learning/:courseId" element={<StudentLearning />} />
                     <Route path="course/:courseId/results" element={<QuizResults />} />
                     <Route path="course-review/:courseId" element={<CourseReview />} />
