@@ -872,14 +872,15 @@ const CourseManagement = () => {
   };
 
   const handleViewStudentHistory = async (student) => {
-    setSelectedStudentInfo(student);
+    const studentInfo = studentList.find(s => s.studentId === selectedStudentId);
+    setSelectedStudentInfo(studentInfo);
     setStudentHistoryVisible(true);
     setLoadingStudentHistory(true);
 
     try {
       const response = await getStudentQuizHistoryInCourseApi(
         selectedCourseForQuiz.id,
-        student.studentId
+        selectedStudentId
       );
       if (response && response.code === 1000) {
         setSelectedStudentHistory(response.result || []);

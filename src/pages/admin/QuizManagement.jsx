@@ -464,7 +464,6 @@ const QuizManagement = () => {
         const percentage = totalPossibleScore > 0 ? (totalScore / totalPossibleScore) * 100 : 0;
         const now = new Date();
         const startTime = previewStartTime || (previewAttempt.startedAt ? new Date(previewAttempt.startedAt) : now);
-        const durationMinutes = Math.ceil((now - startTime) / (1000 * 60));
         
         return {
             attemptId: previewAttempt.id,
@@ -473,7 +472,6 @@ const QuizManagement = () => {
             attemptNumber: previewAttempt.attemptNumber,
             startedAt: startTime.toISOString(),
             completedAt: now.toISOString(),
-            durationMinutes: durationMinutes,
             score: totalScore,
             percentage: percentage,
             totalQuestions: previewAttempt.totalQuestions,
@@ -1028,7 +1026,7 @@ const QuizManagement = () => {
                                         value={previewResult.score}
                                         precision={1}
                                         valueStyle={{ color: '#1890ff' }}
-                                        suffix={`/ ${previewAttempt?.quiz?.totalQuestions * 5 || 'N/A'}`}
+                                        suffix={`/ ${previewAttempt?.attemptAnswers?.reduce((sum, a) => sum + (a.question?.points || 0), 0) ?? 'N/A'}`}
                                     />
                                 </Card>
                             </Col>
@@ -1059,9 +1057,9 @@ const QuizManagement = () => {
                                 <Card>
                                     <Statistic
                                         title="Thời gian"
-                                        value={previewResult.durationMinutes}
+                                        value={dayjs(previewResult.completedAt).diff(dayjs(previewResult.startedAt), 'second')}
+                                        formatter={formatTime}
                                         valueStyle={{ color: '#fa8c16' }}
-                                        suffix="phút"
                                     />
                                 </Card>
                             </Col>
