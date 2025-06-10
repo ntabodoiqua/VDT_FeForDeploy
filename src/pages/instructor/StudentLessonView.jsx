@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
     Card, 
@@ -28,9 +28,41 @@ import {
     PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import 'katex/dist/katex.min.css';
+import renderMathInElement from 'katex/dist/contrib/auto-render';
 import { fetchLessonByIdApi, fetchLessonDocumentsApi, downloadLessonDocumentApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
+
+const LessonContentRenderer = ({ content }) => {
+    const contentRef = useRef(null);
+
+    useEffect(() => {
+        const element = contentRef.current;
+        if (element) {
+            try {
+                renderMathInElement(element, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            } catch (error) {
+                console.error("KaTeX rendering error:", error);
+            }
+        }
+    }, [content]);
+
+    return (
+        <div
+            ref={contentRef}
+            dangerouslySetInnerHTML={{ __html: content || "" }}
+        />
+    );
+};
 
 const InstructorStudentLessonView = () => {
     const { lessonId } = useParams();
@@ -192,9 +224,7 @@ const InstructorStudentLessonView = () => {
             return <Text style={{ color: '#666', fontStyle: 'italic' }}>Chưa có nội dung bài học</Text>;
         }
 
-        return (
-            <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
-        );
+        return <LessonContentRenderer content={lesson.content} />;
     };
 
     if (loading) {
