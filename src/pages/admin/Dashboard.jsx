@@ -16,6 +16,7 @@ import {
     MenuFoldOutlined,
     QuestionCircleOutlined,
     SolutionOutlined as UserManagementIcon,
+    FileOutlined,
 } from '@ant-design/icons';
 import { useContext } from 'react';
 import { AuthContext } from '../../components/context/auth.context';
@@ -116,6 +117,12 @@ const AdminDashboard = () => {
             ]
         },
         {
+            key: 'file-management',
+            icon: <FileOutlined />,
+            label: 'Quản lý file',
+            onClick: () => navigate('/admin/file-management')
+        },
+        {
             key: 'statistics',
             icon: <BarChartOutlined />,
             label: 'Thống kê',
@@ -141,6 +148,7 @@ const AdminDashboard = () => {
         if (location.pathname.startsWith('/admin/reviews')) selected = 'reviews';
         if (location.pathname.startsWith('/admin/quiz-management') || location.pathname.startsWith('/admin/quiz-questions')) selected = 'quiz-management';
         if (location.pathname.startsWith('/admin/instructor-management')) selected = 'instructor-management';
+        if (location.pathname.startsWith('/admin/file-management')) selected = 'file-management';
         
         return selected;
     };

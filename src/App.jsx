@@ -21,6 +21,7 @@ import AdminStudentLessonView from './pages/admin/StudentLessonView';
 import AdminQuizManagement from './pages/admin/QuizManagement';
 import AdminQuizQuestionManagement from './pages/admin/QuizQuestionManagement';
 import AdminInstructorManagement from './pages/admin/InstructorManagement';
+import AdminFileManagement from './pages/admin/FileManagement';
 import InstructorCourseManagement from './pages/instructor/CourseManagement';
 import InstructorLessonManagement from './pages/instructor/LessonManagement';
 import InstructorStatistics from './pages/instructor/Statistics';
@@ -75,6 +76,7 @@ function App() {
                     <Route path="quiz-management" element={<AdminQuizManagement />} />
                     <Route path="quiz-questions/:quizId" element={<AdminQuizQuestionManagement />} />
                     <Route path="instructor-management" element={<AdminInstructorManagement />} />
+                    <Route path="file-management" element={<AdminFileManagement />} />
                 </Route>
 
                 {/* Protected routes for INSTRUCTOR */}

@@ -546,6 +546,11 @@ const fetchPublicCourseReviewsApi = (courseId, params) => {
 const getQuizAttemptsOverTimeApi = (quizId) =>
   axios.get(`/lms/quiz-attempts/over-time/${quizId}`);
 
+const fetchAllFilesAsAdminApi = (params) => {
+    const queryParams = new URLSearchParams(params);
+    return axios.get(`/lms/files?${queryParams.toString()}`);
+};
+
 export {
     createUserApi, loginApi,
     fetchUsersApi,
@@ -672,4 +677,5 @@ export {
     fetchCourseReviewsApi,
     fetchPublicCourseReviewsApi,
     getQuizAttemptsOverTimeApi,
+    fetchAllFilesAsAdminApi,
 }
