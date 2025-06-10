@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout, Row, Col, Input, Button, Typography, Space, Card, Avatar, Rate, Tag, Carousel, Skeleton, Modal, message, Spin, List, Descriptions, Image, Divider, Pagination } from 'antd';
+import { Layout, Row, Col, Input, Button, Typography, Space, Card, Avatar, Rate, Tag, Carousel, Skeleton, Modal, message, Spin, List, Descriptions, Image, Divider, Pagination, Form, Select } from 'antd';
 import { SearchOutlined, FacebookOutlined, GithubOutlined, InstagramOutlined, MailOutlined, PhoneOutlined, TrophyOutlined, CrownOutlined, StarOutlined, BookOutlined, TeamOutlined, UserOutlined, InfoCircleOutlined, ShoppingCartOutlined, PlayCircleOutlined, ClockCircleOutlined, AppstoreOutlined } from '@ant-design/icons';
 import logo from '../assets/images/logo.png';
 import useIntersectionObserver from '../hooks/useIntersectionObserver';
@@ -8,6 +8,7 @@ import axios from '../util/axios.customize';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
 
 // Helper function to get full image URL (inspired by existing components)
 const getDisplayImageUrl = (urlPath) => {
@@ -22,58 +23,6 @@ const getDisplayImageUrl = (urlPath) => {
     return urlPath; 
 };
 
-
-// Mock Data for placeholders
-const topInstructors = [
-    {
-        id: 1,
-        firstName: 'Alex',
-        lastName: 'Johnson',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1887&auto=format&fit=crop',
-        bio: 'Chuyên gia phát triển Web với hơn 10 năm kinh nghiệm.',
-        totalStudents: 5000,
-        totalCourses: 15,
-        averageRating: 4.9,
-        totalReviews: 800,
-        experienceYears: 10,
-    },
-    {
-        id: 2,
-        firstName: 'Maria',
-        lastName: 'Garcia',
-        avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=2070&auto=format&fit=crop',
-        bio: 'Nhà thiết kế từng đoạt giải thưởng, đam mê chia sẻ kiến thức.',
-        totalStudents: 8000,
-        totalCourses: 12,
-        averageRating: 4.9,
-        totalReviews: 1200,
-        experienceYears: 8,
-    },
-    {
-        id: 3,
-        firstName: 'David',
-        lastName: 'Chen',
-        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1887&auto=format&fit=crop',
-        bio: 'Kỹ sư AI tại một công ty công nghệ hàng đầu.',
-        totalStudents: 3500,
-        totalCourses: 8,
-        averageRating: 4.8,
-        totalReviews: 450,
-        experienceYears: 6,
-    },
-    {
-        id: 4,
-        firstName: 'Emily',
-        lastName: 'Wang',
-        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1961&auto=format&fit=crop',
-        bio: 'Bậc thầy về phương pháp Agile và tối ưu hóa quy trình.',
-        totalStudents: 6000,
-        totalCourses: 20,
-        averageRating: 4.8,
-        totalReviews: 950,
-        experienceYears: 12,
-    },
-];
 
 const reviews = [
     {
@@ -131,6 +80,8 @@ const LandingPage = () => {
     const [heroVisible, setHeroVisible] = useState(false);
     const [popularCourses, setPopularCourses] = useState([]);
     const [loadingPopular, setLoadingPopular] = useState(true);
+    const [topInstructors, setTopInstructors] = useState([]);
+    const [loadingTopInstructors, setLoadingTopInstructors] = useState(true);
 
     // New states for course preview modal
     const [previewModalVisible, setPreviewModalVisible] = useState(false);
@@ -146,6 +97,68 @@ const LandingPage = () => {
         pageSize: 8,
         total: 0
     });
+
+    // New states for all instructors section
+    const [allInstructors, setAllInstructors] = useState([]);
+    const [loadingAllInstructors, setLoadingAllInstructors] = useState(true);
+    const [instructorPagination, setInstructorPagination] = useState({
+        current: 1,
+        pageSize: 8,
+        total: 0
+    });
+    const [instructorFilters, setInstructorFilters] = useState({
+        name: undefined,
+        experience: undefined,
+        rating: undefined,
+    });
+    const [instructorFilterForm] = Form.useForm();
+
+    // New states for instructor courses modal
+    const [instructorCoursesModalVisible, setInstructorCoursesModalVisible] = useState(false);
+    const [selectedInstructor, setSelectedInstructor] = useState(null);
+    const [instructorCourses, setInstructorCourses] = useState([]);
+    const [loadingInstructorCourses, setLoadingInstructorCourses] = useState(false);
+
+    const fetchAllInstructors = useCallback(async (page = 1, pageSize = 8, filters = {}) => {
+        setLoadingAllInstructors(true);
+        try {
+            const params = new URLSearchParams({
+                page: page - 1,
+                size: pageSize,
+            });
+
+            if (filters.name && filters.name.trim()) {
+                params.append('name', filters.name.trim());
+            }
+
+            if (filters.experience) {
+                const experienceMap = { '1-3': 1, '3-5': 3, '5-10': 5, '10+': 10 };
+                params.append('minExperience', experienceMap[filters.experience]);
+            }
+            if (filters.rating) {
+                const ratingMap = { '4+': 4.0, '3+': 3.0, '2+': 2.0 };
+                params.append('minRating', ratingMap[filters.rating]);
+            }
+
+            const response = await axios.get(`lms/instructors/public?${params.toString()}`);
+            if (response && response.result) {
+                setAllInstructors(response.result.content);
+                setInstructorPagination({
+                    current: page,
+                    pageSize: pageSize,
+                    total: response.result.totalElements,
+                });
+            } else {
+                setAllInstructors([]);
+                message.error(response.message || 'Không thể tải danh sách giảng viên');
+            }
+        } catch (error) {
+            console.error("Failed to fetch all instructors:", error);
+            message.error("Không thể tải danh sách giảng viên");
+        } finally {
+            setLoadingAllInstructors(false);
+        }
+    }, []);
 
     useEffect(() => {
         // Initial fade-in
@@ -207,17 +220,77 @@ const LandingPage = () => {
             }
         };
 
+        const fetchTopInstructors = async () => {
+            setLoadingTopInstructors(true);
+            try {
+                const response = await axios.get('lms/instructors/public/top?limit=4');
+                if (response && response.result) {
+                    setTopInstructors(response.result);
+                } else {
+                    setTopInstructors([]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch top instructors:", error);
+                setTopInstructors([]);
+            } finally {
+                setLoadingTopInstructors(false);
+            }
+        };
+
         fetchPopularCourses();
         fetchAllCourses();
+        fetchTopInstructors();
+        fetchAllInstructors(1, 8, { name: undefined, experience: undefined, rating: undefined });
 
         return () => {
             clearTimeout(initialTimer);
             clearInterval(intervalTimer);
         };
-    }, []);
+    }, [fetchAllInstructors]);
 
     const handlePaginationChange = (page, pageSize) => {
         fetchAllCourses(page, pageSize);
+    };
+
+    const handleInstructorPaginationChange = (page, pageSize) => {
+        fetchAllInstructors(page, pageSize, instructorFilters);
+    };
+
+    const onApplyInstructorFilters = (values) => {
+        setInstructorFilters(values);
+        fetchAllInstructors(1, instructorPagination.pageSize, values);
+    };
+
+    const onClearInstructorFilters = () => {
+        instructorFilterForm.resetFields();
+        const clearedFilters = { name: undefined, experience: undefined, rating: undefined };
+        setInstructorFilters(clearedFilters);
+        fetchAllInstructors(1, instructorPagination.pageSize, clearedFilters);
+    };
+
+    const handleViewInstructorCourses = (instructor) => {
+        setSelectedInstructor(instructor);
+        setInstructorCoursesModalVisible(true);
+        fetchInstructorCourses(instructor.id);
+    };
+
+    const fetchInstructorCourses = async (instructorId) => {
+        setLoadingInstructorCourses(true);
+        try {
+            const response = await axios.get(`lms/instructors/public/${instructorId}/courses`);
+            if (response && response.result) {
+                setInstructorCourses(response.result.content || []);
+            } else {
+                setInstructorCourses([]);
+                message.error(response.message || 'Không thể tải khóa học của giảng viên.');
+            }
+        } catch (error) {
+            console.error('Failed to fetch instructor courses:', error);
+            setInstructorCourses([]);
+            message.error('Lỗi khi tải khóa học của giảng viên.');
+        } finally {
+            setLoadingInstructorCourses(false);
+        }
     };
 
     const handleRegister = () => {
@@ -524,27 +597,145 @@ const LandingPage = () => {
                             <Paragraph type="secondary">Học hỏi từ những chuyên gia xuất sắc nhất trong ngành.</Paragraph>
                         </div>
                         <Row gutter={[24, 24]}>
-                            {topInstructors.map((instructor) => (
-                                <Col xs={24} sm={12} md={8} lg={6} key={instructor.id}>
-                                    <Card hoverable style={{ height: '100%', textAlign: 'center' }}>
-                                        <Avatar size={100} src={getDisplayImageUrl(instructor.avatarUrl)} icon={<UserOutlined />} style={{ border: '4px solid #1890ff', marginBottom: 16 }} />
-                                        <Title level={4}>{instructor.firstName} {instructor.lastName}</Title>
-                                        <Paragraph type="secondary" style={{ minHeight: 40 }}>{instructor.bio}</Paragraph>
-                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-                                            <Rate disabled defaultValue={instructor.averageRating} style={{ fontSize: '14px' }} />
-                                            <span style={{ marginLeft: 8 }}>{instructor.averageRating.toFixed(1)}/5 ({instructor.totalReviews} đánh giá)</span>
-                                        </div>
-                                        <Space direction="vertical" style={{ width: '100%' }}>
-                                            <Row style={{ width: '100%' }}>
-                                                <Col span={12}><Text strong><TeamOutlined /> {instructor.totalStudents}</Text></Col>
-                                                <Col span={12}><Text strong><BookOutlined /> {instructor.totalCourses}</Text></Col>
-                                            </Row>
-                                            <Tag color="blue">{instructor.experienceYears} năm kinh nghiệm</Tag>
-                                        </Space>
-                                    </Card>
-                                </Col>
-                            ))}
+                            {loadingTopInstructors ? (
+                                Array.from({ length: 4 }).map((_, index) => (
+                                    <Col xs={24} sm={12} md={8} lg={6} key={index}>
+                                        <Card style={{ height: '100%' }}>
+                                            <Skeleton avatar active />
+                                        </Card>
+                                    </Col>
+                                ))
+                            ) : (
+                                topInstructors.map((instructor) => (
+                                    <Col xs={24} sm={12} md={8} lg={6} key={instructor.id}>
+                                        <Card hoverable style={{ height: '100%', textAlign: 'center' }}>
+                                            <Avatar size={100} src={getDisplayImageUrl(instructor.avatarUrl)} icon={<UserOutlined />} style={{ border: '4px solid #1890ff', marginBottom: 16 }} />
+                                            <Title level={4}>{instructor.firstName} {instructor.lastName}</Title>
+                                            <Paragraph type="secondary" style={{ minHeight: 40 }}>{instructor.bio}</Paragraph>
+                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                                                <Rate disabled value={instructor.averageRating || 0} style={{ fontSize: '14px' }} />
+                                                {instructor.averageRating != null && (
+                                                    <span style={{ marginLeft: 8 }}>{instructor.averageRating.toFixed(1)}/5 ({instructor.totalReviews} đánh giá)</span>
+                                                )}
+                                            </div>
+                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                <Row style={{ width: '100%' }}>
+                                                    <Col span={12}><Text strong><TeamOutlined /> {instructor.totalStudents}</Text></Col>
+                                                    <Col span={12}><Text strong><BookOutlined /> {instructor.totalCourses}</Text></Col>
+                                                </Row>
+                                                {instructor.experienceYears && <Tag color="blue">{instructor.experienceYears} năm kinh nghiệm</Tag>}
+                                            </Space>
+                                        </Card>
+                                    </Col>
+                                ))
+                            )}
                         </Row>
+                    </AnimatedSection>
+                </div>
+
+                {/* All Instructors Section */}
+                <div id="all-instructors" style={{ padding: '80px 50px', backgroundColor: '#fff' }}>
+                    <AnimatedSection>
+                        <div style={{ textAlign: 'center', marginBottom: 50 }}>
+                            <Title level={2}><TeamOutlined style={{ color: '#1890ff', marginRight: 12 }} />Tất cả giảng viên</Title>
+                            <Paragraph type="secondary">Gặp gỡ đội ngũ giảng viên chuyên nghiệp và đầy nhiệt huyết của chúng tôi.</Paragraph>
+                        </div>
+                        <Card style={{ marginBottom: 32 }}>
+                            <Form form={instructorFilterForm} layout="vertical" onFinish={onApplyInstructorFilters}>
+                                <Row gutter={16}>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="name" label="Tên giảng viên">
+                                            <Input placeholder="Nhập tên giảng viên" allowClear />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="experience" label="Kinh nghiệm">
+                                            <Select placeholder="Chọn mức kinh nghiệm" allowClear>
+                                                <Option value="1-3">1-3 năm</Option>
+                                                <Option value="3-5">3-5 năm</Option>
+                                                <Option value="5-10">5-10 năm</Option>
+                                                <Option value="10+">Hơn 10 năm</Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12} md={8}>
+                                        <Form.Item name="rating" label="Đánh giá">
+                                            <Select placeholder="Chọn mức đánh giá" allowClear>
+                                                <Option value="4+">4+ sao</Option>
+                                                <Option value="3+">3+ sao</Option>
+                                                <Option value="2+">2+ sao</Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col span={24} style={{ textAlign: 'right' }}>
+                                        <Space>
+                                            <Button onClick={onClearInstructorFilters}>
+                                                Xóa bộ lọc
+                                            </Button>
+                                            <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                                                Tìm kiếm
+                                            </Button>
+                                        </Space>
+                                    </Col>
+                                </Row>
+                            </Form>
+                        </Card>
+                        <Row gutter={[24, 24]}>
+                            {loadingAllInstructors ? (
+                                Array.from({ length: 8 }).map((_, index) => (
+                                    <Col xs={24} sm={12} md={8} lg={6} key={index}>
+                                        <Card style={{ height: '100%' }}><Skeleton avatar active /></Card>
+                                    </Col>
+                                ))
+                            ) : allInstructors.length > 0 ? (
+                                allInstructors.map((instructor) => (
+                                    <Col xs={24} sm={12} md={8} lg={6} key={instructor.id}>
+                                        <Card hoverable style={{ height: '100%', textAlign: 'center' }}>
+                                            <Avatar size={100} src={getDisplayImageUrl(instructor.avatarUrl)} icon={<UserOutlined />} style={{ border: '4px solid #1890ff', marginBottom: 16 }} />
+                                            <Title level={4}>{instructor.firstName} {instructor.lastName}</Title>
+                                            <Paragraph type="secondary" style={{ minHeight: 40 }} ellipsis={{ rows: 2, expandable: false }}>{instructor.bio || 'Chưa có tiểu sử.'}</Paragraph>
+                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                                                <Rate disabled allowHalf value={instructor.averageRating || 0} style={{ fontSize: '14px' }} />
+                                                <span style={{ marginLeft: 8 }}>({instructor.totalReviews || 0} đánh giá)</span>
+                                            </div>
+                                            <Space direction="vertical" style={{ width: '100%' }}>
+                                                <Row style={{ width: '100%' }}>
+                                                    <Col span={12}><Text strong><TeamOutlined /> {instructor.totalStudents || 0}</Text></Col>
+                                                    <Col span={12}><Text strong><BookOutlined /> {instructor.totalCourses || 0}</Text></Col>
+                                                </Row>
+                                                {instructor.experienceYears != null && <Tag color="blue">{instructor.experienceYears} năm kinh nghiệm</Tag>}
+                                                <Button
+                                                    type="default"
+                                                    icon={<BookOutlined />}
+                                                    onClick={() => handleViewInstructorCourses(instructor)}
+                                                    style={{ width: '100%', marginTop: 8 }}
+                                                >
+                                                    Xem khóa học
+                                                </Button>
+                                            </Space>
+                                        </Card>
+                                    </Col>
+                                ))
+                            ) : (
+                                <Col span={24} style={{ textAlign: 'center' }}>
+                                    <Paragraph>Không tìm thấy giảng viên nào phù hợp.</Paragraph>
+                                </Col>
+                            )}
+                        </Row>
+                        {allInstructors.length > 0 && (
+                            <div style={{ textAlign: 'center', marginTop: 32 }}>
+                                <Pagination
+                                    current={instructorPagination.current}
+                                    pageSize={instructorPagination.pageSize}
+                                    total={instructorPagination.total}
+                                    onChange={handleInstructorPaginationChange}
+                                    showSizeChanger
+                                    pageSizeOptions={['8', '12', '16', '20']}
+                                />
+                            </div>
+                        )}
                     </AnimatedSection>
                 </div>
 
@@ -795,6 +986,72 @@ const LandingPage = () => {
                         </div>
                     </div>
                 ) : null}
+            </Modal>
+
+            <Modal
+                title={`Các khóa học của ${selectedInstructor?.firstName || ''} ${selectedInstructor?.lastName || ''}`}
+                open={instructorCoursesModalVisible}
+                onCancel={() => {
+                    setInstructorCoursesModalVisible(false);
+                    setSelectedInstructor(null);
+                    setInstructorCourses([]);
+                }}
+                footer={[
+                    <Button key="close" onClick={() => {
+                        setInstructorCoursesModalVisible(false);
+                        setSelectedInstructor(null);
+                        setInstructorCourses([]);
+                    }}>
+                        Đóng
+                    </Button>
+                ]}
+                width={800}
+                destroyOnClose
+            >
+                {loadingInstructorCourses ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                        <Spin size="large" />
+                    </div>
+                ) : instructorCourses.length > 0 ? (
+                    <List
+                        itemLayout="vertical"
+                        dataSource={instructorCourses}
+                        renderItem={course => (
+                            <List.Item
+                                key={course.id}
+                                extra={
+                                    <img
+                                        width={150}
+                                        alt={course.title}
+                                        src={getDisplayImageUrl(course.thumbnailUrl)}
+                                        style={{ objectFit: 'cover', borderRadius: '8px', height: 100 }}
+                                    />
+                                }
+                            >
+                                <List.Item.Meta
+                                    title={<a onClick={() => handlePreviewCourse(course)}>{course.title}</a>}
+                                    description={<Paragraph ellipsis={{ rows: 2 }}>{course.description}</Paragraph>}
+                                />
+                                <Space size="middle">
+                                    <Text type="secondary"><BookOutlined /> {course.totalLessons} bài học</Text>
+                                    {course.averageRating != null ? (
+                                        <Space>
+                                            <Rate disabled allowHalf value={course.averageRating} style={{ fontSize: 14 }} />
+                                            <span>({course.averageRating.toFixed(1)})</span>
+                                        </Space>
+                                    ) : (
+                                        <Text type="secondary" style={{ fontSize: 14 }}>Chưa có đánh giá</Text>
+                                    )}
+                                </Space>
+                            </List.Item>
+                        )}
+                    />
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                        <BookOutlined style={{ fontSize: 48, color: '#ccc' }} />
+                        <Title level={5} style={{ marginTop: 16 }}>Giảng viên này chưa có khóa học nào</Title>
+                    </div>
+                )}
             </Modal>
         </Layout>
     );
