@@ -28,16 +28,11 @@ import {
     PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import 'katex/dist/katex.min.css';
 import { fetchLessonByIdApi, fetchLessonDocumentsApi, downloadLessonDocumentApi } from '../../util/api';
 
 const { Title, Text, Paragraph } = Typography;
 
-const StudentLessonView = () => {
+const InstructorStudentLessonView = () => {
     const { lessonId } = useParams();
     const navigate = useNavigate();
     const [lesson, setLesson] = useState(null);
@@ -198,11 +193,7 @@ const StudentLessonView = () => {
         }
 
         return (
-            <ReactMarkdown
-                children={lesson.content || ""}
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex, rehypeRaw]}
-            />
+            <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
         );
     };
 
@@ -258,7 +249,7 @@ const StudentLessonView = () => {
                             borderRadius: '12px',
                             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                         }}
-                        bodyStyle={{ padding: '32px' }}
+                        styles={{ body: { padding: '32px' } }}
                     >
                         {/* Header bài học */}
                         <div style={{ marginBottom: '32px' }}>
@@ -362,7 +353,7 @@ const StudentLessonView = () => {
                                     backgroundColor: '#fafafa',
                                     border: '1px solid #f0f0f0'
                                 }}
-                                bodyStyle={{ padding: '24px' }}
+                                styles={{ body: { padding: '24px' } }}
                             >
                                 {renderLessonContent()}
                             </Card>
@@ -436,7 +427,7 @@ const StudentLessonView = () => {
                             borderRadius: '12px',
                             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                         }}
-                        bodyStyle={{ padding: '16px' }}
+                        styles={{ body: { padding: '16px' } }}
                     >
                         {filesLoading ? (
                             <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -551,4 +542,4 @@ const StudentLessonView = () => {
     );
 };
 
-export default StudentLessonView; 
+export default InstructorStudentLessonView; 

@@ -46,11 +46,6 @@ import {
   TrophyOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import rehypeRaw from "rehype-raw";
-import "katex/dist/katex.min.css";
 import {
   fetchCourseByIdApi,
   fetchPublicLessonsForCourseApi,
@@ -1125,26 +1120,11 @@ const StudentLearning = () => {
     }
 
     return (
-      <Card
-        style={{
-          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-          borderRadius: "12px",
-        }}
-      >
-        <Title level={3} style={{ marginBottom: "24px" }}>
-          {currentLesson.title}
-        </Title>
-        <div
-          className="lesson-content-wrapper"
-          style={{ fontSize: "16px", lineHeight: "1.8" }}
-        >
-          <ReactMarkdown
-            children={currentLesson.content || ""}
-            remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeKatex, rehypeRaw]}
-          />
-        </div>
-      </Card>
+      <div
+        className="lesson-content-wrapper"
+        style={{ fontSize: "16px", lineHeight: "1.8" }}
+        dangerouslySetInnerHTML={{ __html: currentLesson.content || "" }}
+      />
     );
   };
 
