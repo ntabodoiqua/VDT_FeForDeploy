@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, Card, Drawer, Dropdown, Menu, Tag } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UserOutlined, MoreOutlined, BarChartOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, Row, Col, DatePicker, Select, Tooltip, Card, Drawer, Dropdown, Menu, Tag, List, Upload } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, UserOutlined, MoreOutlined, BarChartOutlined, FileTextOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import LargeFileUpload from '../../components/Upload/LargeFileUpload';
 import { useNavigate } from 'react-router-dom';
-import { fetchAllSystemLessonsApi, fetchLessonByIdApi, updateLessonApi, createLessonApi, deleteLessonApi, getCoursesForLessonApi, getLessonQuizStatsInCourseApi } from '../../util/api'; // Import the shared API function and fetchLessonByIdApi
+import { 
+    fetchAllSystemLessonsApi, 
+    fetchLessonByIdApi, 
+    updateLessonApi, 
+    createLessonApi, 
+    deleteLessonApi, 
+    getCoursesForLessonApi, 
+    getLessonQuizStatsInCourseApi,
+    fetchLessonDocumentsApi,
+    uploadLessonDocumentApi,
+    deleteLessonDocumentApi,
+    downloadLessonDocumentApi,
+} from '../../util/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const { TextArea } = Input;
@@ -26,6 +39,18 @@ const LessonManagement = () => {
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedLessonDetails, setSelectedLessonDetails] = useState(null);
     const [loadingViewDetails, setLoadingViewDetails] = useState(false);
+
+    // Lesson Documents state
+    const [documentsModalVisible, setDocumentsModalVisible] = useState(false);
+    const [lessonDocuments, setLessonDocuments] = useState([]);
+    const [selectedLessonForDocs, setSelectedLessonForDocs] = useState(null);
+    const [uploadDocumentModalVisible, setUploadDocumentModalVisible] = useState(false);
+    const [documentForm] = Form.useForm();
+    const [documentFileList, setDocumentFileList] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploading, setUploading] = useState(false);
+    const [showProgress, setShowProgress] = useState(false);
+    const [loadingDocuments, setLoadingDocuments] = useState(false);
 
     const [quizStatsDrawerVisible, setQuizStatsDrawerVisible] = useState(false);
     const [selectedLessonForStats, setSelectedLessonForStats] = useState(null);
@@ -113,6 +138,12 @@ const LessonManagement = () => {
                         icon: <UserOutlined />,
                         label: 'Giao diện học viên',
                         onClick: () => navigate(`/admin/student-lesson-view/${record.id}`)
+                    },
+                    {
+                        key: 'docs',
+                        icon: <FileTextOutlined />,
+                        label: 'Quản lý tài liệu',
+                        onClick: () => handleViewLessonDocuments(record),
                     },
                     {
                         key: 'quiz-stats',
@@ -357,6 +388,133 @@ const LessonManagement = () => {
         setLessonQuizStats(null);
     };
 
+    // Lesson Documents functions
+    const handleViewLessonDocuments = async (lesson) => {
+        setSelectedLessonForDocs(lesson);
+        setDocumentsModalVisible(true);
+        await fetchLessonDocuments(lesson.id);
+    };
+
+    const fetchLessonDocuments = async (lessonId) => {
+        setLoadingDocuments(true);
+        try {
+            const response = await fetchLessonDocumentsApi(lessonId);
+            if (response && response.result) {
+                setLessonDocuments(response.result);
+            } else {
+                message.error('Không thể tải danh sách tài liệu');
+            }
+        } catch (error) {
+            message.error('Lỗi khi tải danh sách tài liệu: ' + error.message);
+        } finally {
+            setLoadingDocuments(false);
+        }
+    };
+
+    const handleUploadLessonDocument = () => {
+        setUploadDocumentModalVisible(true);
+    };
+
+    const handleLessonDocumentSubmit = async (values) => {
+        if (!documentFileList.length) {
+            message.error('Vui lòng chọn file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify({
+            title: values.title,
+            description: values.description
+        })], { type: 'application/json' }));
+        formData.append('file', documentFileList[0]);
+
+        setUploading(true);
+        setShowProgress(true);
+        setUploadProgress(0);
+
+        try {
+            const response = await uploadLessonDocumentApi(
+                selectedLessonForDocs.id, 
+                formData, 
+                (progressEvent) => {
+                    const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setUploadProgress(progress);
+                }
+            );
+            
+            if (response && response.result) {
+                message.success('Tài liệu đã được tải lên thành công');
+                setUploadDocumentModalVisible(false);
+                resetUploadState();
+                await fetchLessonDocuments(selectedLessonForDocs.id);
+            } else {
+                message.error('Không thể tải lên tài liệu');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            let errorMessage = 'Lỗi khi tải lên tài liệu';
+            
+            if (error.code === 'ECONNABORTED') {
+                errorMessage = 'Tải lên bị timeout. Vui lòng thử lại với file nhỏ hơn hoặc kiểm tra kết nối mạng.';
+            } else if (error.response) {
+                errorMessage = error.response.data?.message || `Lỗi server: ${error.response.status}`;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            message.error(errorMessage);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const resetUploadState = () => {
+        documentForm.resetFields();
+        setDocumentFileList([]);
+        setUploadProgress(0);
+        setShowProgress(false);
+        setUploading(false);
+    };
+
+    const handleFileSelect = (file) => {
+        setDocumentFileList([file]);
+    };
+
+    const handleDeleteLessonDocument = async (documentId) => {
+        Modal.confirm({
+            title: 'Bạn có chắc chắn muốn xóa tài liệu này?',
+            content: 'Hành động này không thể hoàn tác.',
+            okText: 'Xóa',
+            cancelText: 'Hủy',
+            okType: 'danger',
+            onOk: async () => {
+                try {
+                    await deleteLessonDocumentApi(selectedLessonForDocs.id, documentId);
+                    message.success('Tài liệu đã được xóa thành công');
+                    await fetchLessonDocuments(selectedLessonForDocs.id);
+                } catch (error) {
+                    message.error('Lỗi khi xóa tài liệu: ' + error.message);
+                }
+            },
+        });
+    };
+
+    const handleDownloadLessonDocument = async (documentId, fileName) => {
+        try {
+            const response = await downloadLessonDocumentApi(selectedLessonForDocs.id, documentId);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            message.error('Lỗi khi tải xuống tài liệu: ' + error.message);
+        }
+    };
+
     return (
         <div>
             <Form
@@ -598,6 +756,146 @@ const LessonManagement = () => {
                     </Row>
                 )}
             </Drawer>
+
+            {/* Lesson Documents Modal */}
+            <Modal
+                title={`Quản lý tài liệu - ${selectedLessonForDocs?.title || ''}`}
+                open={documentsModalVisible}
+                onCancel={() => {
+                    setDocumentsModalVisible(false);
+                    setSelectedLessonForDocs(null);
+                    setLessonDocuments([]);
+                }}
+                footer={[
+                    <Button key="upload" type="primary" onClick={handleUploadLessonDocument}>
+                        <UploadOutlined /> Tải lên tài liệu
+                    </Button>,
+                    <Button key="close" onClick={() => {
+                        setDocumentsModalVisible(false);
+                        setSelectedLessonForDocs(null);
+                        setLessonDocuments([]);
+                    }}>
+                        Đóng
+                    </Button>
+                ]}
+                width={800}
+            >
+                <List
+                    loading={loadingDocuments}
+                    dataSource={lessonDocuments}
+                    locale={{ emptyText: 'Chưa có tài liệu nào' }}
+                    renderItem={(document) => (
+                        <List.Item
+                            actions={[
+                                <Tooltip title="Tải xuống">
+                                    <Button 
+                                        icon={<DownloadOutlined />} 
+                                        onClick={() => handleDownloadLessonDocument(document.id, document.originalFileName)}
+                                    />
+                                </Tooltip>,
+                                <Tooltip title="Xóa">
+                                    <Button 
+                                        danger 
+                                        icon={<DeleteOutlined />} 
+                                        onClick={() => handleDeleteLessonDocument(document.id)}
+                                    />
+                                </Tooltip>
+                            ]}
+                        >
+                            <List.Item.Meta
+                                avatar={<FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
+                                title={document.title}
+                                description={
+                                    <div>
+                                        <div>{document.description}</div>
+                                        <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                                            File: {document.originalFileName} | 
+                                            Kích thước: {(document.fileSize / 1024).toFixed(2)} KB | 
+                                            Tải lên: {new Date(document.uploadedAt).toLocaleDateString('vi-VN')} | 
+                                            Bởi: {document.uploadedByUsername}
+                                        </div>
+                                    </div>
+                                }
+                            />
+                        </List.Item>
+                    )}
+                />
+            </Modal>
+
+            {/* Upload Lesson Document Modal */}
+            <Modal
+                title="Tải lên tài liệu bài học"
+                open={uploadDocumentModalVisible}
+                onCancel={() => {
+                    if (!uploading) {
+                        setUploadDocumentModalVisible(false);
+                        resetUploadState();
+                    }
+                }}
+                footer={null}
+                width={700}
+                closable={!uploading}
+                maskClosable={!uploading}
+            >
+                <Form
+                    form={documentForm}
+                    layout="vertical"
+                    onFinish={handleLessonDocumentSubmit}
+                >
+                    <Form.Item
+                        name="title"
+                        label="Tiêu đề tài liệu"
+                        rules={[{ required: true, message: 'Vui lòng nhập tiêu đề tài liệu' }]}
+                    >
+                        <Input disabled={uploading} />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="description"
+                        label="Mô tả"
+                    >
+                        <TextArea rows={3} disabled={uploading} />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="File tài liệu"
+                        rules={[{ required: true, message: 'Vui lòng chọn file' }]}
+                    >
+                        <LargeFileUpload
+                            onFileSelect={handleFileSelect}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv"
+                            maxSizeMB={250}
+                            uploading={uploading}
+                            uploadProgress={uploadProgress}
+                            showProgress={showProgress}
+                        />
+                    </Form.Item>
+
+                    <Form.Item>
+                        <Space>
+                            <Button 
+                                type="primary" 
+                                htmlType="submit"
+                                loading={uploading}
+                                disabled={!documentFileList.length || uploading}
+                            >
+                                {uploading ? 'Đang tải lên...' : 'Tải lên'}
+                            </Button>
+                            <Button 
+                                onClick={() => {
+                                    if (!uploading) {
+                                        setUploadDocumentModalVisible(false);
+                                        resetUploadState();
+                                    }
+                                }}
+                                disabled={uploading}
+                            >
+                                Hủy
+                            </Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 };
