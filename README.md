@@ -1,35 +1,56 @@
-# React 
-Template này được sử dụng cho video fullstack React/Nodejs JWT của tác giả Hỏi Dân IT (Eric)
+# Dự án Innolearn (VDT_frontend)
 
-### Môi trường chạy dự án: Node.js v20.14.0
-https://nodejs.org/download/release/v20.14.0/
+Đây là project frontend cho ứng dụng Innolearn, được xây dựng bằng React và Vite.
 
-## Về tác giả
-Mọi thông tin về Tác giả Hỏi Dân IT, các bạn có thể tìm kiếm tại đây:
+### Yêu cầu môi trường
+- **Node.js**: Phiên bản v20.x trở lên. Bạn có thể tải tại [https://nodejs.org/](https://nodejs.org/)
 
-Website chính thức: https://hoidanit.vn/
+---
 
-Youtube “Hỏi Dân IT” : https://www.youtube.com/@hoidanit
+## Hướng dẫn cài đặt và chạy dự án
 
-Tiktok “Hỏi Dân IT” :  https://www.tiktok.com/@hoidanit
+### 1. Clone repository
+```bash
+# Thay <your-repository-url> bằng URL repository của bạn
+git clone <your-repository-url>
+cd VDT_frontend
+```
 
-Fanpage “Hỏi Dân IT” : https://www.facebook.com/askITwithERIC/
+### 2. Cài đặt dependencies
+Sử dụng một trong hai lệnh sau:
+```bash
+npm install
+```
+hoặc
+```bash
+yarn install
+```
 
-Udemy Hỏi Dân IT: https://www.udemy.com/user/eric-7039/
+### 3. Cấu hình biến môi trường
+-   Sao chép file `.env.example` thành một file mới tên là `.env.development` (nếu có file `.env.example`).
+-   Mở file `.env.development` và cập nhật các giá trị cho phù hợp với môi trường local của bạn.
 
-===
+---
+## Chạy dự án
 
-Các bước cài đặt: (chế độ development)
-1. clone code
-2. cài đặt thư viện: npm i
-3. Update file .env.development (nếu cần thiết)
-4. Chạy dự án: npm run dev
+### Chế độ Development
+Để khởi động server development, chạy lệnh:
+```bash
+npm run dev
+```
+Dự án sẽ được chạy tại `http://localhost:5173` (hoặc một cổng khác nếu cổng 5173 đã bị chiếm dụng).
 
-===
+### Chế độ Production
+Để build và preview phiên bản production:
 
-Cách chạy tại chế độ production:
-1. clone code
-2. cài đặt thư viện: npm i
-3. Update file .env.production (nếu cần thiết)
-4. Build dự án: npm run build
-5. Chạy dự án: npm run preview
+1.  **Build dự án:**
+    ```bash
+    npm run build
+    ```
+    Lệnh này sẽ tạo ra một thư mục `dist` chứa các file đã được tối ưu hóa cho production.
+
+2.  **Preview bản build:**
+    ```bash
+    npm run preview
+    ```
+    Lệnh này sẽ khởi động một server để bạn xem trước phiên bản production.

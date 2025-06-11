@@ -72,7 +72,7 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 
-const LessonContentRenderer = ({ content }) => {
+const KatexRenderer = ({ content, ...props }) => {
     const contentRef = useRef(null);
 
     useEffect(() => {
@@ -97,9 +97,18 @@ const LessonContentRenderer = ({ content }) => {
     return (
         <div
             ref={contentRef}
+            dangerouslySetInnerHTML={{ __html: content || "" }}
+            {...props}
+        />
+    );
+};
+
+const LessonContentRenderer = ({ content }) => {
+    return (
+        <KatexRenderer 
+            content={content}
             className="lesson-content-wrapper"
             style={{ fontSize: '16px', lineHeight: '1.8' }}
-            dangerouslySetInnerHTML={{ __html: content || "" }}
         />
     );
 };
@@ -2261,9 +2270,10 @@ const StudentLearning = () => {
                   style={{ marginBottom: "24px" }}
                 >
                   <div style={{ marginBottom: "16px" }}>
-                    <Text style={{ fontSize: "16px", lineHeight: "1.6" }}>
-                      {getCurrentQuestion().questionText}
-                    </Text>
+                    <KatexRenderer
+                        content={getCurrentQuestion().questionText}
+                        style={{ fontSize: "16px", lineHeight: "1.6" }}
+                    />
                     <div style={{ marginTop: "8px" }}>
                       <Tag color="blue">
                         Điểm: {getCurrentQuestion().points}
@@ -2296,11 +2306,10 @@ const StudentLearning = () => {
                               margin: "4px 0",
                             }}
                           >
-                            <div
-                              style={{ marginLeft: "8px", lineHeight: "1.5" }}
-                            >
-                              {answer.answerText}
-                            </div>
+                            <KatexRenderer
+                                content={answer.answerText}
+                                style={{ marginLeft: "8px", lineHeight: "1.5" }}
+                            />
                           </Radio>
                         ))}
                     </Space>

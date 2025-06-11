@@ -3,6 +3,8 @@ import { Table, Button, Space, Modal, Form, Input, message, Descriptions, Spin, 
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, BarChartOutlined, PlayCircleOutlined, StopOutlined, QuestionCircleOutlined, ExperimentOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import 'katex/dist/katex.min.css';
+import renderMathInElement from 'katex/dist/contrib/auto-render';
 import { AuthContext } from '../../components/context/auth.context';
 import { 
     fetchQuizzesApi, 
@@ -22,6 +24,37 @@ import {
 const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
+
+const KatexRenderer = ({ content, ...props }) => {
+    const contentRef = useRef(null);
+
+    useEffect(() => {
+        const element = contentRef.current;
+        if (element) {
+            try {
+                renderMathInElement(element, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            } catch (error) {
+                console.error("KaTeX rendering error:", error);
+            }
+        }
+    }, [content]);
+
+    return (
+        <div
+            ref={contentRef}
+            dangerouslySetInnerHTML={{ __html: content || "" }}
+            {...props}
+        />
+    );
+};
 
 const QuizManagement = () => {
     const navigate = useNavigate();
@@ -1125,9 +1158,10 @@ const QuizManagement = () => {
                         {getCurrentQuestion() ? (
                             <Card title={`Câu ${currentQuestionIndex + 1}`} style={{ marginBottom: '24px' }}>
                                 <div style={{ marginBottom: '16px' }}>
-                                    <Text style={{ fontSize: '16px', lineHeight: '1.6' }}>
-                                        {getCurrentQuestion().question.questionText}
-                                    </Text>
+                                    <KatexRenderer 
+                                        content={getCurrentQuestion().question.questionText}
+                                        style={{ fontSize: '16px', lineHeight: '1.6' }}
+                                    />
                                     <div style={{ marginTop: '8px' }}>
                                         <Tag color="blue">Điểm: {getCurrentQuestion().question.points}</Tag>
                                     </div>
@@ -1153,9 +1187,10 @@ const QuizManagement = () => {
                                                         margin: '4px 0'
                                                     }}
                                                 >
-                                                    <div style={{ marginLeft: '8px', lineHeight: '1.5' }}>
-                                                        {answer.answerText}
-                                                    </div>
+                                                    <KatexRenderer
+                                                        content={answer.answerText}
+                                                        style={{ marginLeft: '8px', lineHeight: '1.5' }}
+                                                    />
                                                 </Radio>
                                             ))
                                         }
