@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
         role: null,
         scope: null
     });
+    const [isLoading, setIsLoading] = useState(true);
 
     // Khôi phục trạng thái authentication từ token khi component mount
     useEffect(() => {
@@ -41,7 +42,12 @@ export const AuthProvider = ({ children }) => {
                 });
             }
         }
+        setIsLoading(false); 
     }, []);
+
+    if (isLoading) {
+        return null; // Hoặc một component loading, ví dụ: <Spin size="large" />
+    }
 
     return (
         <AuthContext.Provider value={{ auth, setAuth }}>
