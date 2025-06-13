@@ -57,11 +57,11 @@ export const hasRoleOrHigher = (userRole, requiredRole) => {
 export const getDefaultRouteByRole = (role) => {
     switch (role) {
         case 'ROLE_ADMIN':
-            return '/admin';
+            return '/admin/users';
         case 'ROLE_INSTRUCTOR':
-            return '/instructor';
+            return '/instructor/courses';
         case 'ROLE_STUDENT':
-            return '/student';
+            return '/student/courses';
         default:
             return '/login';
     }
