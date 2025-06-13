@@ -239,11 +239,9 @@ const FileManagement = () => {
     };
 
     const getFileUrl = (file) => {
-        const baseUrl = import.meta.env.VITE_BACKEND_URL.endsWith('/lms')
-            ? import.meta.env.VITE_BACKEND_URL.replace('/lms', '')
-            : import.meta.env.VITE_BACKEND_URL;
-        const folder = file.public ? 'public' : 'private';
-        return `${baseUrl}/lms/uploads/${folder}/${file.fileName}`;
+        // Files are served from a CDN. The fileName from the backend includes the path (e.g., public/image.jpg)
+        const cdnBaseUrl = 'https://innolearn-files.sgp1.cdn.digitaloceanspaces.com';
+        return `${cdnBaseUrl}/${file.fileName}`;
     };
 
     const checkFileUsageStatus = async (fileName) => {
