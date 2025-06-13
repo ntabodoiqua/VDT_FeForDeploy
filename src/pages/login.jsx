@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../components/context/auth.context';
 import { ArrowLeftOutlined, UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import { jwtDecode } from 'jwt-decode';
-import { getHighestRole } from '../util/authUtils';
+import { getHighestRole, getDefaultRouteByRole } from '../util/authUtils';
 import logo from '../assets/images/logo.png';
 
 const { Title } = Typography;
@@ -46,7 +46,7 @@ const LoginPage = () => {
                     message: "Đăng nhập thành công",
                     description: `Chào mừng ${decoded.sub} quay trở lại!`
                 });
-                navigate("/");
+                navigate(getDefaultRouteByRole(highestRole));
             } else {
                 setLoginFailCount(prev => prev + 1);
                 if (res.code === 1007) {
