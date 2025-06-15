@@ -504,34 +504,34 @@ const StudentLearning = () => {
 
   const handleDocumentDownload = async (doc, isLessonDoc = false) => {
     try {
-      const response = isLessonDoc
-        ? await downloadLessonDocumentApi(currentLesson.id, doc.id)
-        : await downloadCourseDocumentApi(courseId, doc.id);
+      // The new streaming endpoint only needs the fileName
+      const streamUrl = `/stream/${doc.fileName}`;
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        doc.fileName || doc.originalFileName || "document"
-      );
+      // The backend will redirect to a pre-signed URL from DigitalOcean.
+      // The browser will follow this and the 'Content-Disposition' header from DO
+      // will ensure the correct filename is used for the downloaded file.
+      link.href = streamUrl;
+      link.setAttribute("download", doc.originalFileName || doc.fileName || "document");
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      // Track document view nếu là lesson document
+      document.body.removeChild(link);
+
+      // The download is now handled by the browser.
+
+      // Track document view if it is a lesson document
       if (isLessonDoc) {
         try {
           await trackDocumentViewApi(doc.id);
-          message.success("Tải xuống thành công - Tiến độ đã được cập nhật");
+          message.success("Tải xuống bắt đầu - Tiến độ đã được cập nhật");
           // Refresh enrollment progress after tracking document view
           await fetchEnrollmentAndProgress();
         } catch (trackError) {
           console.error("Failed to track document view:", trackError);
-          message.success("Tải xuống thành công");
+          message.success("Tải xuống bắt đầu");
         }
       } else {
-        message.success("Tải xuống thành công");
+        message.success("Tải xuống bắt đầu");
       }
     } catch (error) {
       message.error("Không thể tải xuống tài liệu");
@@ -542,62 +542,34 @@ const StudentLearning = () => {
   const handleDocumentPreview = async (doc, isLessonDoc = false) => {
     try {
       setPreviewDocument(doc);
-      setDocumentPreviewVisible(true);
-
-      const response = isLessonDoc
-        ? await downloadLessonDocumentApi(currentLesson.id, doc.id)
-        : await downloadCourseDocumentApi(courseId, doc.id);
-
-      const blob = response.data || response;
-
-      // Xác định file type từ filename hoặc blob type
       const fileName = doc.originalFileName || doc.fileName || "";
       const fileExtension = fileName.toLowerCase().split(".").pop();
 
-      // Kiểm tra xem file có thể preview được không
-      const previewableTypes = ["pdf", "txt", "html", "htm"];
+      const previewableTypes = ["pdf", "txt", "html", "htm", "mp4", "webm", "ogg"];
       const imageTypes = ["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp"];
 
-      if (imageTypes.includes(fileExtension)) {
-        // Với images, tạo blob URL với type phù hợp
-        const imageBlob = new Blob([blob], {
-          type: `image/${fileExtension === "jpg" ? "jpeg" : fileExtension}`,
-        });
-        const url = window.URL.createObjectURL(imageBlob);
-        setPreviewUrl(url);
-      } else if (previewableTypes.includes(fileExtension)) {
-        // Với PDF, text files - tạo blob với correct MIME type
-        let mimeType = "application/octet-stream"; // default
-        if (fileExtension === "pdf") {
-          mimeType = "application/pdf";
-        } else if (fileExtension === "txt") {
-          mimeType = "text/plain";
-        } else if (fileExtension === "html" || fileExtension === "htm") {
-          mimeType = "text/html";
-        }
-
-        const typedBlob = new Blob([blob], { type: mimeType });
-        const url = window.URL.createObjectURL(typedBlob);
-        setPreviewUrl(url);
-      } else {
-        // Với các file khác (Word, Excel, v.v.) - không thể preview
-        message.warning(
-          `Không thể xem trước file ${fileExtension.toUpperCase()}. Vui lòng tải xuống để xem.`
-        );
-        setDocumentPreviewVisible(false);
-        return;
+      // For other files (Word, Excel, etc.) - cannot be previewed
+      if (!imageTypes.includes(fileExtension) && !previewableTypes.includes(fileExtension)) {
+          message.warning(`Không thể xem trước file ${fileExtension.toUpperCase()}. Vui lòng tải xuống để xem.`);
+          return;
       }
 
-      // Track document view nếu là lesson document
+      // We no longer fetch the blob. We point directly to the streaming endpoint.
+      // The browser will handle the redirect and load the content in the iframe/img.
+      const streamUrl = `/stream/${doc.fileName}`;
+
+      setPreviewUrl(streamUrl);
+      setDocumentPreviewVisible(true);
+
+      // Track document view if it's a lesson document
       if (isLessonDoc) {
         try {
           await trackDocumentViewApi(doc.id);
-          message.success("Đã xem tài liệu - Tiến độ đã được cập nhật");
           // Refresh enrollment progress after tracking document view
           await fetchEnrollmentAndProgress();
         } catch (trackError) {
           console.error("Failed to track document view:", trackError);
-          // Không hiển thị lỗi tracking cho user
+          // Don't show tracking errors to the user
         }
       }
     } catch (error) {
@@ -609,9 +581,7 @@ const StudentLearning = () => {
   const handleCloseDocumentPreview = () => {
     setDocumentPreviewVisible(false);
     setPreviewDocument(null);
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      window.URL.revokeObjectURL(previewUrl);
-    }
+    // We are not using blob URLs anymore, so no need to revoke
     setPreviewUrl(null);
   };
 
