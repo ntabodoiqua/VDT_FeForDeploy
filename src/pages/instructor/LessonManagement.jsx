@@ -856,7 +856,7 @@ const LessonManagement = () => {
                         <LargeFileUpload
                             onFileSelect={handleFileSelect}
                             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv"
-                            maxSizeMB={250}
+                            maxSizeMB={5}
                             uploading={uploading}
                             uploadProgress={uploadProgress}
                             showProgress={showProgress}
